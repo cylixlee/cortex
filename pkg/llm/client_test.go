@@ -13,8 +13,8 @@ type mockLLMClient struct {
 }
 
 func (m *mockLLMClient) Stream(ctx context.Context, req ChatRequest) (<-chan ChatResponse, <-chan error) {
-	respChan := make(chan ChatResponse, 10)
-	errChan := make(chan error, 10)
+	respChan := make(chan ChatResponse)
+	errChan := make(chan error)
 
 	go func() {
 		defer close(respChan)
