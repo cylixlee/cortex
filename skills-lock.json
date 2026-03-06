@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "design-pattern": {
+      "source": "cylixlee/skills",
+      "sourceType": "github",
+      "computedHash": "185de1ed3b4c901dc982bc3a5d91bda9296d304d77d9142bb770d5cc60b2fb36"
+    },
+    "test-driven-development": {
+      "source": "cylixlee/skills",
+      "sourceType": "github",
+      "computedHash": "5fed87df1140ceaee84cac71f487f103f4192ab02dcd9822a70247a9e4194799"
+    }
+  }
+}
