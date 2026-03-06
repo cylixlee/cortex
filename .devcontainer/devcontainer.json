@@ -1,0 +1,15 @@
+{
+    "name": "Cortex DevContainer",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.go",
+                "yzhang.markdown-all-in-one"
+            ]
+        }
+    },
+    "remoteUser": "root"
+}
