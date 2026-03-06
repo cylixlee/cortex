@@ -14,13 +14,12 @@ Cortex is an AI Agent system with multi-turn conversation, tool calling (MCP, Sk
 │   ├── cli                 # CLI program entry
 │   └── server              # HTTP service entry
 ├── pkg
-│   └── core                # Core logic
-│       ├── agent           # Agent main flow
-│       ├── context         # Context management
-│       ├── session         # Session storage interface
-│       ├── subagent        # Sub-agent scheduling
-│       ├── mcp             # Model Communication Protocol abstraction
-│       └── skills          # Skill registration and execution
+│   ├── agent               # Agent core scheduling logic
+│   ├── session            # Session storage interface
+│   ├── llm                # LLM client interface & implementations
+│   ├── subagent           # Sub-agent scheduling
+│   ├── mcp                # Model Communication Protocol abstraction
+│   └── skills             # Skill registration and execution
 ├── internal
 │   ├── config              # Configuration loading (Viper)
 │   ├── db                  # Database operations (GORM)
@@ -28,6 +27,7 @@ Cortex is an AI Agent system with multi-turn conversation, tool calling (MCP, Sk
 │   ├── repository          # Repository layer implementation
 │   └── service             # Business services
 ├── api                     # API definitions (OpenAPI/Swagger)
+├── docs                    # Documentation
 ├── web                     # Frontend static files
 ├── .devcontainer           # Dev container configuration
 ├── Taskfile.yml            # Task runner
@@ -37,32 +37,40 @@ Cortex is an AI Agent system with multi-turn conversation, tool calling (MCP, Sk
 
 ## Tech Stack
 
-| Area         | Technology                    |
-|--------------|-------------------------------|
-| Web Framework| Gin                           |
-| Database     | PostgreSQL + GORM             |
-| Cache        | Redis                         |
-| CLI          | Cobra                         |
-| TUI          | Bubble Tea                    |
-| Config       | Viper                         |
-| Logging      | Zap / Logrus                  |
-| Auth         | JWT + Redis blacklist         |
-| Streaming    | SSE or WebSocket              |
-| Task Queue   | Asynq / channel               |
-| Build Tool   | Task                          |
-| Dev Env      | VSCode Dev Containers         |
+| Area          | Technology            |
+| ------------- | --------------------- |
+| Web Framework | Gin                   |
+| Database      | PostgreSQL + GORM     |
+| Cache         | Redis                 |
+| CLI           | Cobra                 |
+| TUI           | Bubble Tea            |
+| Config        | Viper                 |
+| Logging       | Zap / Logrus          |
+| Auth          | JWT + Redis blacklist |
+| Streaming     | SSE or WebSocket      |
+| Task Queue    | Asynq / channel       |
+| Build Tool    | Task                  |
+| Dev Env       | VSCode Dev Containers |
+
+## Minimal Core API Design
+
+See [docs/minimal.md](docs/minimal.md) for the Minimal Core API design, which focuses on session management and remote model calling only.
 
 ## Module Responsibilities
 
-### pkg/core
-Provides core functionality including:
-- Agent main flow orchestration
-- Session context management
+### pkg/agent
+Provides core agent scheduling logic:
+- Handles main flow orchestration
+- Exposes extensible interfaces (LLMClient, SessionStore, UserInterface) for different scenarios
+
+### pkg/session, pkg/llm
+- Session storage interface definition
+- LLM client interface definition
+
+### pkg/subagent, pkg/mcp, pkg/skills
+- Sub-agent scheduling
 - MCP abstraction
 - Skill registration and execution
-- Sub-agent scheduling
-
-Defines key interfaces for dependency injection by upper layers.
 
 ### cmd/server
 - Initializes HTTP service, database, Redis
@@ -84,6 +92,6 @@ Contains private implementations:
 
 - Follow standard Go project layout
 - Use dependency injection for testability
-- Define interfaces in `pkg/core` for external implementations
+- Define interfaces in `pkg` for external implementations
 - Keep business logic separate from infrastructure
 - Configure development environment via .devcontainer
