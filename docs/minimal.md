@@ -121,10 +121,10 @@ type Usage struct {
 
 **Why `Usage` only on final chunk**: Token counts are only available after the entire response is generated. Streaming responses don't include usage until the stream ends.
 
-### LLMClient
+### Client
 
 ```go
-type LLMClient interface {
+type Client interface {
     Stream(ctx context.Context, req ChatRequest) (<-chan ChatResponse, <-chan error)
 }
 ```
@@ -161,12 +161,12 @@ type UserInterface interface {
 
 ```go
 type Agent struct {
-    llmClient    LLMClient
+    llmClient    Client
     sessionStore SessionStore
     ui           UserInterface
 }
 
-func NewAgent(llmClient LLMClient, sessionStore SessionStore, ui UserInterface) *Agent
+func NewAgent(llmClient Client, sessionStore SessionStore, ui UserInterface) *Agent
 
 func (a *Agent) Chat(ctx context.Context, sessionID, userInput string)
 ```
@@ -187,7 +187,7 @@ pkg/
 │   ├── session.go    # Session, Message structs + SessionStore interface
 │   └── memory.go     # In-memory implementation (for testing/dev)
 ├── llm/
-│   ├── client.go     # ChatRequest, ChatResponse, Usage + LLMClient interface
+│   ├── client.go     # ChatRequest, ChatResponse, Usage + Client interface
 │   └── openai.go     # OpenAI Compatible implementation
 └── agent/
     └── agent.go      # Agent core scheduling logic + extensible interfaces
@@ -195,8 +195,8 @@ pkg/
 
 **Design Rationale**:
 - `agent` package contains core scheduling logic
-- Only exposes extensible interfaces (LLMClient, SessionStore, UserInterface) for different scenarios
-- Swap LLMClient to switch models (OpenAI, Anthropic, local models)
+- Only exposes extensible interfaces (Client, SessionStore, UserInterface) for different scenarios
+- Swap Client to switch models (OpenAI, Anthropic, local models)
 - Swap SessionStore to switch databases (in-memory, SQLite, PostgreSQL)
 - Swap UserInterface to switch UI (TUI with typewriter effect, Web with SSE)
 

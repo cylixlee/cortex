@@ -61,7 +61,7 @@ See [docs/minimal.md](docs/minimal.md) for the Minimal Core API design, which fo
 ### pkg/agent
 Provides core agent scheduling logic:
 - Handles main flow orchestration
-- Exposes extensible interfaces (LLMClient, SessionStore, UserInterface) for different scenarios
+- Exposes extensible interfaces (Client, SessionStore, UserInterface) for different scenarios
 
 ### pkg/session, pkg/llm
 - Session storage interface definition

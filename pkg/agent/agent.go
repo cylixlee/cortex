@@ -15,12 +15,12 @@ type UserInterface interface {
 }
 
 type Agent struct {
-	llmClient    llm.LLMClient
+	llmClient    llm.Client
 	sessionStore session.SessionStore
 	ui           UserInterface
 }
 
-func NewAgent(llmClient llm.LLMClient, sessionStore session.SessionStore, ui UserInterface) *Agent {
+func NewAgent(llmClient llm.Client, sessionStore session.SessionStore, ui UserInterface) *Agent {
 	return &Agent{
 		llmClient:    llmClient,
 		sessionStore: sessionStore,

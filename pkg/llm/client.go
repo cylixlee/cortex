@@ -28,6 +28,6 @@ type Usage struct {
 	TotalTokens      int
 }
 
-type LLMClient interface {
+type Client interface {
 	Stream(ctx context.Context, req ChatRequest) (<-chan ChatResponse, <-chan error)
 }
