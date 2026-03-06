@@ -17,15 +17,15 @@ import "fmt"
 
 type Iterator interface {
 	HasNext() bool
-	Next() interface{}
+	Next() any
 }
 
 type ArrayIterator struct {
-	array   []interface{}
+	array   []any
 	position int
 }
 
-func NewArrayIterator(array []interface{}) *ArrayIterator {
+func NewArrayIterator(array []any) *ArrayIterator {
 	return &ArrayIterator{array: array}
 }
 
@@ -33,18 +33,18 @@ func (i *ArrayIterator) HasNext() bool {
 	return i.position < len(i.array)
 }
 
-func (i *ArrayIterator) Next() interface{} {
+func (i *ArrayIterator) Next() any {
 	item := i.array[i.position]
 	i.position++
 	return item
 }
 
 type ListIterator struct {
-	list     []interface{}
+	list     []any
 	position int
 }
 
-func NewListIterator(list []interface{}) *ListIterator {
+func NewListIterator(list []any) *ListIterator {
 	return &ListIterator{list: list}
 }
 
@@ -52,21 +52,21 @@ func (i *ListIterator) HasNext() bool {
 	return i.position < len(i.list)
 }
 
-func (i *ListIterator) Next() interface{} {
+func (i *ListIterator) Next() any {
 	item := i.list[i.position]
 	i.position++
 	return item
 }
 
 func main() {
-	array := []interface{}{"A", "B", "C"}
+	array := []any{"A", "B", "C"}
 	arrayIterator := NewArrayIterator(array)
 	
 	for arrayIterator.HasNext() {
 		fmt.Println(arrayIterator.Next())
 	}
 	
-	list := []interface{}{"X", "Y", "Z"}
+	list := []any{"X", "Y", "Z"}
 	listIterator := NewListIterator(list)
 	
 	for listIterator.HasNext() {
