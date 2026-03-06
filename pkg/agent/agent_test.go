@@ -84,7 +84,7 @@ func TestNewAgent_CreatesInstance(t *testing.T) {
 	}
 }
 
-func TestAgent_Chat_CreatesNewSession(t *testing.T) {
+func TestAgent_Chat_CallsOnError_WhenSessionNotExist(t *testing.T) {
 	mockLLM := &mockLLMClient{}
 	mockStore := newMockSessionStore()
 	mockUI := &mockUserInterface{}
@@ -92,14 +92,13 @@ func TestAgent_Chat_CreatesNewSession(t *testing.T) {
 	a := NewAgent(mockLLM, mockStore, mockUI)
 	ctx := context.Background()
 
-	a.Chat(ctx, "new-session", "user-1", "Hello")
+	a.Chat(ctx, "non-existent-session", "Hello")
 
-	sess, err := mockStore.Get(ctx, "new-session")
-	if err != nil {
-		t.Errorf("expected session to be created: %v", err)
+	if len(mockUI.errors) != 1 {
+		t.Errorf("expected 1 error, got %d", len(mockUI.errors))
 	}
-	if sess.UserID != "user-1" {
-		t.Errorf("expected userID 'user-1', got '%s'", sess.UserID)
+	if mockUI.errors[0] != session.ErrSessionNotFound {
+		t.Errorf("expected ErrSessionNotFound, got %v", mockUI.errors[0])
 	}
 }
 
@@ -120,7 +119,7 @@ func TestAgent_Chat_AppendsUserMessage(t *testing.T) {
 	a := NewAgent(mockLLM, mockStore, mockUI)
 	ctx := context.Background()
 
-	a.Chat(ctx, "session-1", "user-1", "Hello")
+	a.Chat(ctx, "session-1", "Hello")
 
 	sess, _ := mockStore.Get(ctx, "session-1")
 	if len(sess.Messages) != 1 {
@@ -143,10 +142,19 @@ func TestAgent_Chat_AppendsAssistantMessage(t *testing.T) {
 	mockStore := newMockSessionStore()
 	mockUI := &mockUserInterface{}
 
+	now := time.Now()
+	mockStore.Create(context.Background(), &session.Session{
+		ID:        "session-1",
+		UserID:    "user-1",
+		Messages:  []session.Message{},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+
 	a := NewAgent(mockLLM, mockStore, mockUI)
 	ctx := context.Background()
 
-	a.Chat(ctx, "session-1", "user-1", "Hello")
+	a.Chat(ctx, "session-1", "Hello")
 
 	sess, _ := mockStore.Get(ctx, "session-1")
 	if len(sess.Messages) != 2 {
@@ -170,10 +178,19 @@ func TestAgent_Chat_CallsOnResponse(t *testing.T) {
 	mockStore := newMockSessionStore()
 	mockUI := &mockUserInterface{}
 
+	now := time.Now()
+	mockStore.Create(context.Background(), &session.Session{
+		ID:        "session-1",
+		UserID:    "user-1",
+		Messages:  []session.Message{},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+
 	a := NewAgent(mockLLM, mockStore, mockUI)
 	ctx := context.Background()
 
-	a.Chat(ctx, "session-1", "user-1", "Hello")
+	a.Chat(ctx, "session-1", "Hello")
 
 	if len(mockUI.responses) != 2 {
 		t.Errorf("expected 2 responses, got %d", len(mockUI.responses))
@@ -193,10 +210,19 @@ func TestAgent_Chat_CallsOnError_OnFailure(t *testing.T) {
 	mockStore := newMockSessionStore()
 	mockUI := &mockUserInterface{}
 
+	now := time.Now()
+	mockStore.Create(context.Background(), &session.Session{
+		ID:        "session-1",
+		UserID:    "user-1",
+		Messages:  []session.Message{},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+
 	a := NewAgent(mockLLM, mockStore, mockUI)
 	ctx := context.Background()
 
-	a.Chat(ctx, "session-1", "user-1", "Hello")
+	a.Chat(ctx, "session-1", "Hello")
 
 	if len(mockUI.errors) != 1 {
 		t.Errorf("expected 1 error, got %d", len(mockUI.errors))

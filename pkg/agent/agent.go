@@ -28,17 +28,11 @@ func NewAgent(llmClient llm.LLMClient, sessionStore session.SessionStore, ui Use
 	}
 }
 
-func (a *Agent) Chat(ctx context.Context, sessionID, userID, userInput string) {
+func (a *Agent) Chat(ctx context.Context, sessionID, userInput string) {
 	sess, err := a.sessionStore.Get(ctx, sessionID)
 	if err != nil || sess == nil {
-		sess = &session.Session{
-			ID:        sessionID,
-			UserID:    userID,
-			Messages:  []session.Message{},
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		}
-		a.sessionStore.Create(ctx, sess)
+		a.ui.OnError(session.ErrSessionNotFound)
+		return
 	}
 
 	sess.Messages = append(sess.Messages, session.Message{
