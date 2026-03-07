@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "design-pattern": {
+      "source": "cylixlee/skills",
+      "sourceType": "github",
+      "computedHash": "c1e127daed06524c88d06b9b5f75f300558d4e3a44feb69e1910891cf35d721d"
+    },
+    "skill-creator": {
+      "source": "cylixlee/skills",
+      "sourceType": "github",
+      "computedHash": "d0136d48dece2bea4d6891a632a3f9e11f2b0bc07a7f9586602adf942d157c36"
+    },
+    "test-driven-development": {
+      "source": "cylixlee/skills",
+      "sourceType": "github",
+      "computedHash": "5fed87df1140ceaee84cac71f487f103f4192ab02dcd9822a70247a9e4194799"
+    }
+  }
+}
