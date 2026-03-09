@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 
@@ -22,12 +23,21 @@ type Session struct {
 	runner   *adk.Runner
 }
 
-func NewClient(baseURL, apiKey, modelName string) (*Client, error) {
-	chatModel, err := deepseek.NewChatModel(context.Background(), &deepseek.ChatModelConfig{
-		BaseURL: baseURL,
-		APIKey:  apiKey,
-		Model:   modelName,
-	})
+func NewClient(ctx context.Context, provider, baseURL, apiKey, modelName string) (*Client, error) {
+	var chatModel model.ToolCallingChatModel
+	var err error
+
+	switch provider {
+	case "deepseek":
+		chatModel, err = deepseek.NewChatModel(ctx, &deepseek.ChatModelConfig{
+			BaseURL: baseURL,
+			APIKey:  apiKey,
+			Model:   modelName,
+		})
+	default:
+		return nil, errors.New("unsupported provider: " + provider)
+	}
+
 	if err != nil {
 		return nil, err
 	}

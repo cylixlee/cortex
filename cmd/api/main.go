@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/cylixlee/cortex/internal/config"
@@ -12,7 +13,13 @@ import (
 func main() {
 	cfg := config.Load()
 
-	llmClient, err := llm.NewClient(cfg.ChatBaseURL, cfg.ChatAPIKey, "deepseek-chat")
+	llmClient, err := llm.NewClient(
+		context.Background(), 
+		cfg.ChatProvider, 
+		cfg.ChatBaseURL, 
+		cfg.ChatAPIKey, 
+		cfg.ChatModel,
+	)
 	if err != nil {
 		log.Fatalf("Failed to create LLM client: %v", err)
 	}
