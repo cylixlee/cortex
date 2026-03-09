@@ -16,6 +16,46 @@
       "sourceType": "github",
       "computedHash": "8594164e65407925d8ef84764df97cf731bb57f6d283b518c6cfbbdb8f264ec4"
     },
+    "golang-gin-api": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "ad38b05de1b0574b132e52901f41e7d70cba77d30b61f38946978d42ad7b794b"
+    },
+    "golang-gin-architect": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "0fcdf15f6a3a788c6750ea701b957a93700020e79f56c5219ec124376a164561"
+    },
+    "golang-gin-auth": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "f12c4ca8d527d26f4249f639bece0f24a07056a96e447ae2e524093e61c27d17"
+    },
+    "golang-gin-database": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "61e57abb4f0aac209f866767679c6a28e12b067ac29858cec73865a9186ab938"
+    },
+    "golang-gin-deploy": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "5340694f6689c2738ba7556c294732acd6644528bb7e69a8c84602ec7fce8b75"
+    },
+    "golang-gin-psql-dba": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "93211b424bf6c3edec092cb5d180491eeec0190d77b43b2dd007815f918a1912"
+    },
+    "golang-gin-swagger": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "2051d42d009eefc6a5fff6d90ab7f14b22c9a99e774d3486d725cf6e233905bd"
+    },
+    "golang-gin-testing": {
+      "source": "henriqueatila/golang-gin-best-practices",
+      "sourceType": "github",
+      "computedHash": "2a09194e50c32b66879467ad3ad0db7c21e6c432c336edc89cbddc077617a3e0"
+    },
     "skill-creator": {
       "source": "cylixlee/skills",
       "sourceType": "github",
