@@ -16,8 +16,6 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
    - **Internal (RAG)**: Vectorized into knowledge base for contextual Q&A
    - **External (Download)**: Package as downloadable Skill for downstream Agents
 
----
-
 ## Architecture Overview
 
 ```
@@ -59,8 +57,6 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
               └─────────────────────┘
 ```
 
----
-
 ## Technology Stack
 
 | Layer        | Technology                              |
@@ -72,8 +68,6 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
 | Cache        | Redis                                   |
 | File Storage | Object Storage (MinIO/S3)               |
 | Deployment   | Docker                                  |
-
----
 
 ## Core Modules
 
@@ -102,6 +96,7 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
 ### 4. Knowledge Base Service (Skill Factory) ⭐
 
 Multi-stage workflow:
+
 ```
 1. Source Upload (ZIP)
       ↓
@@ -130,8 +125,6 @@ Multi-stage workflow:
 - Streaming support
 - Error retry logic
 
----
-
 ## Data Storage
 
 | Storage        | Purpose                                     |
@@ -140,16 +133,16 @@ Multi-stage workflow:
 | Redis          | Session cache, rate limiting, task status   |
 | Object Storage | Source ZIP files, generated Skill packages  |
 
----
-
 ## Core Workflows
 
 ### Chat Workflow
+
 ```
 User Query → Vector Search (Skill Docs) → Build Prompt → LLM → Streaming Response
 ```
 
 ### Code-to-Skill Workflow
+
 ```
 File Upload → Eino Multi-stage Analysis
   ├── [Overview Agent] → SKILL.md
@@ -158,8 +151,6 @@ File Upload → Eino Multi-stage Analysis
         ├── Path A: Chunk → Embedding → Vector DB
         └── Path B: Package → Object Storage
 ```
-
----
 
 ## Project Structure
 
@@ -182,8 +173,6 @@ cortex/
 └── deployments/            # Deployment configs (Docker/K8s)
 ```
 
----
-
 ## Core Features
 
 | Feature                | Description                                         |
@@ -195,8 +184,6 @@ cortex/
 | **Skill-based RAG**    | Highly structured retrieval for accurate answers    |
 | **One-click Download** | Export Skill packages as ZIP                        |
 
----
-
 ## Development Phases
 
 1. **Phase 1**: Basic chat functionality (Chat + LLM integration)
@@ -204,8 +191,6 @@ cortex/
 3. **Phase 3**: Skill generation workflow (Upload → SKILL.md/refs → storage)
 4. **Phase 4**: Frontend skill details page + download functionality
 5. **Phase 5**: Optimize Skill format for主流 Agent framework compatibility
-
----
 
 ## Design Principles
 
@@ -216,8 +201,6 @@ cortex/
 - **PostgreSQL Unified**: Relational + vector data in one database
 - **Go Performance**: Leverage Go's concurrency for high-throughput
 - **Knowledge as a Service (KaaS)**: Provide both Q&A and reusable knowledge assets
-
----
 
 ## Important Notes for Coding Agents
 
