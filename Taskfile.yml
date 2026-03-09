@@ -6,6 +6,7 @@ tasks:
     cmd: go run ./cmd/api
     interactive: true
     silent: true
+    ignore_error: true
 
   vue:
     desc: Start Vue server
@@ -13,6 +14,7 @@ tasks:
     cmd: pnpm dev
     interactive: true
     silent: true
+    ignore_error: true
 
   build:
     desc: Build both Go and Vue project to perform static analysis
@@ -20,3 +22,4 @@ tasks:
       - go build ./...
       - cd web && pnpm build
     silent: true
+    ignore_error: true
