@@ -13,3 +13,10 @@ tasks:
     cmd: pnpm dev
     interactive: true
     silent: true
+
+  build:
+    desc: Build both Go and Vue project to perform static analysis
+    cmds:
+      - go build ./...
+      - cd web && pnpm build
+    silent: true
