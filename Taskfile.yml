@@ -1,6 +1,44 @@
 version: 3
 
 tasks:
+  install:
+    desc: Install dependencies for both Go and Vue
+    cmds:
+      - task: install-go
+      - task: install-vue
+
+  install-go:
+    desc: Install Go dependencies
+    internal: true
+    cmd: go get ./...
+    silent: true
+
+  install-vue:
+    desc: Install Vue dependencies
+    internal: true
+    dir: "{{.ROOT_DIR}}/web"
+    cmd: pnpm install
+    silent: true
+
+  build:
+    desc: Build both Go and Vue project to perform static analysis
+    cmds:
+      - task: build-go
+      - task: build-vue
+
+  build-go:
+    desc: Build Go project
+    internal: true
+    cmd: go build ./...
+    silent: true
+
+  build-vue:
+    desc: Build Vue project
+    internal: true
+    dir: "{{.ROOT_DIR}}/web"
+    cmd: pnpm build
+    silent: true
+
   go:
     desc: Start Go server
     cmd: go run ./cmd/api
@@ -13,13 +51,5 @@ tasks:
     dir: "{{.ROOT_DIR}}/web"
     cmd: pnpm dev
     interactive: true
-    silent: true
-    ignore_error: true
-
-  build:
-    desc: Build both Go and Vue project to perform static analysis
-    cmds:
-      - go build ./...
-      - cd web && pnpm build
     silent: true
     ignore_error: true
