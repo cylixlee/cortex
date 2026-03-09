@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "c1e127daed06524c88d06b9b5f75f300558d4e3a44feb69e1910891cf35d721d"
     },
+    "eino-adk": {
+      "source": "cylixlee/skills",
+      "sourceType": "github",
+      "computedHash": "8594164e65407925d8ef84764df97cf731bb57f6d283b518c6cfbbdb8f264ec4"
+    },
     "skill-creator": {
       "source": "cylixlee/skills",
       "sourceType": "github",
