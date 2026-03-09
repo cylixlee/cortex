@@ -16,6 +16,11 @@
       "sourceType": "github",
       "computedHash": "8594164e65407925d8ef84764df97cf731bb57f6d283b518c6cfbbdb8f264ec4"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
     "golang-gin-api": {
       "source": "henriqueatila/golang-gin-best-practices",
       "sourceType": "github",
