@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/cylixlee/cortex/internal/config"
+	"github.com/cylixlee/cortex/internal/graceful"
 	"github.com/cylixlee/cortex/internal/handlers"
 	"github.com/cylixlee/cortex/pkg/llm"
 	"github.com/gin-gonic/gin"
@@ -14,10 +15,10 @@ func main() {
 	cfg := config.Load()
 
 	llmClient, err := llm.NewClient(
-		context.Background(), 
-		cfg.ChatProvider, 
-		cfg.ChatBaseURL, 
-		cfg.ChatAPIKey, 
+		context.Background(),
+		cfg.ChatProvider,
+		cfg.ChatBaseURL,
+		cfg.ChatAPIKey,
 		cfg.ChatModel,
 	)
 	if err != nil {
@@ -36,9 +37,7 @@ func main() {
 	})
 
 	log.Println("Server starting on :8080")
-	if err := r.Run(":8080"); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+	graceful.Run(r, ":8080")
 }
 
 func corsMiddleware() gin.HandlerFunc {
