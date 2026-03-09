@@ -1,21 +1,28 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-
-export interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-}
+import { ref, computed } from 'vue'
+import type { Message } from '@/api/conversation'
 
 export const useChatStore = defineStore('chat', () => {
   const messages = ref<Message[]>([])
   const isLoading = ref(false)
+  const conversationId = ref<string | null>(null)
+  const conversationTitle = ref('New Chat')
+
+  function setConversation(id: string | null, title: string = 'New Chat') {
+    conversationId.value = id
+    conversationTitle.value = title
+  }
+
+  function setMessages(msgs: Message[]) {
+    messages.value = msgs
+  }
 
   function addUserMessage(content: string) {
     messages.value.push({
       id: Date.now().toString(),
       role: 'user',
       content,
+      created_at: new Date().toISOString(),
     })
   }
 
@@ -28,6 +35,7 @@ export const useChatStore = defineStore('chat', () => {
         id: 'streaming',
         role: 'assistant',
         content,
+        created_at: new Date().toISOString(),
       })
     }
   }
@@ -48,11 +56,17 @@ export const useChatStore = defineStore('chat', () => {
 
   function clear() {
     messages.value = []
+    conversationId.value = null
+    conversationTitle.value = 'New Chat'
   }
 
   return {
     messages,
     isLoading,
+    conversationId,
+    conversationTitle,
+    setConversation,
+    setMessages,
     addUserMessage,
     addAssistantMessage,
     setLoading,
