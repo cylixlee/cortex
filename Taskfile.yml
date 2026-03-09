@@ -1,0 +1,15 @@
+version: 3
+
+tasks:
+  go:
+    desc: Start Go server
+    cmd: go run ./cmd/api
+    interactive: true
+    silent: true
+
+  vue:
+    desc: Start Vue server
+    dir: "{{.ROOT_DIR}}/web"
+    cmd: pnpm dev
+    interactive: true
+    silent: true
