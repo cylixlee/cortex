@@ -8,12 +8,12 @@ import (
 )
 
 type ChatHandler struct {
-	llmClient *llm.Client
+	sessionManager *llm.SessionManager
 }
 
-func NewChatHandler(llmClient *llm.Client) *ChatHandler {
+func NewChatHandler(client *llm.Client) *ChatHandler {
 	return &ChatHandler{
-		llmClient: llmClient,
+		sessionManager: llm.NewSessionManager(client),
 	}
 }
 
@@ -28,6 +28,17 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 		return
 	}
 
+	sessionID := c.GetHeader("X-Session-ID")
+	if sessionID == "" {
+		sessionID = "default"
+	}
+
+	session, err := h.sessionManager.GetOrCreate(c.Request.Context(), sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -39,7 +50,7 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 		return
 	}
 
-	err := h.llmClient.StreamWithHandler(c.Request.Context(), req.Message, func(content string, err error) bool {
+	err = session.Send(c.Request.Context(), req.Message, func(content string, err error) bool {
 		if err != nil {
 			return false
 		}

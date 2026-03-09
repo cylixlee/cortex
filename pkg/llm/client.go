@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/cloudwego/eino-ext/components/model/deepseek"
 	"github.com/cloudwego/eino/adk"
@@ -12,6 +13,13 @@ import (
 
 type Client struct {
 	chatModel model.ToolCallingChatModel
+}
+
+type Session struct {
+	client   *Client
+	id       string
+	messages []adk.Message
+	runner   *adk.Runner
 }
 
 func NewClient(baseURL, apiKey, modelName string) (*Client, error) {
@@ -29,7 +37,7 @@ func NewClient(baseURL, apiKey, modelName string) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) StreamChat(ctx context.Context, prompt string) *adk.AsyncIterator[*adk.AgentEvent] {
+func (c *Client) CreateSession(ctx context.Context, sessionID string) (*Session, error) {
 	agent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
 		Name:        "chat_agent",
 		Description: "A helpful assistant",
@@ -37,7 +45,7 @@ func (c *Client) StreamChat(ctx context.Context, prompt string) *adk.AsyncIterat
 		Model:       c.chatModel,
 	})
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	runner := adk.NewRunner(ctx, adk.RunnerConfig{
@@ -45,23 +53,24 @@ func (c *Client) StreamChat(ctx context.Context, prompt string) *adk.AsyncIterat
 		EnableStreaming: true,
 	})
 
-	messages := []adk.Message{
-		schema.UserMessage(prompt),
-	}
-
-	return runner.Run(ctx, messages)
+	return &Session{
+		client:   c,
+		id:       sessionID,
+		messages: make([]adk.Message, 0),
+		runner:   runner,
+	}, nil
 }
 
-type StreamHandler func(content string, err error) bool
+func (s *Session) Send(ctx context.Context, userMsg string, handler func(content string, err error) bool) error {
+	userMessage := schema.UserMessage(userMsg)
+	s.messages = append(s.messages, userMessage)
 
-func (c *Client) StreamWithHandler(ctx context.Context, prompt string, handler StreamHandler) error {
-	iter := c.StreamChat(ctx, prompt)
-	if iter == nil {
-		return io.ErrUnexpectedEOF
-	}
+	events := s.runner.Run(ctx, s.messages)
+
+	var assistantContent string
 
 	for {
-		event, ok := iter.Next()
+		event, ok := events.Next()
 		if !ok {
 			break
 		}
@@ -76,6 +85,7 @@ func (c *Client) StreamWithHandler(ctx context.Context, prompt string, handler S
 						handler("", err)
 						return err
 					}
+					assistantContent += chunk.Content
 					if !handler(chunk.Content, nil) {
 						return nil
 					}
@@ -83,5 +93,40 @@ func (c *Client) StreamWithHandler(ctx context.Context, prompt string, handler S
 			}
 		}
 	}
+
+	if assistantContent != "" {
+		s.messages = append(s.messages, schema.AssistantMessage(assistantContent, nil))
+	}
+
 	return nil
+}
+
+type SessionManager struct {
+	mu       sync.Mutex
+	sessions map[string]*Session
+	client   *Client
+}
+
+func NewSessionManager(client *Client) *SessionManager {
+	return &SessionManager{
+		client:   client,
+		sessions: make(map[string]*Session),
+	}
+}
+
+func (m *SessionManager) GetOrCreate(ctx context.Context, sessionID string) (*Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if session, exists := m.sessions[sessionID]; exists {
+		return session, nil
+	}
+
+	session, err := m.client.CreateSession(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	m.sessions[sessionID] = session
+	return session, nil
 }
