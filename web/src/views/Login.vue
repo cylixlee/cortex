@@ -3,6 +3,10 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
+defineOptions({
+  name: 'AuthPage'
+})
+
 const router = useRouter()
 const userStore = useUserStore()
 
@@ -22,8 +26,8 @@ async function handleSubmit() {
       await userStore.login(email.value, password.value)
       router.push('/chat')
     }
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e) {
+    error.value = (e as Error).message
   }
 }
 </script>
@@ -80,7 +84,8 @@ async function handleSubmit() {
 
 <style scoped>
 .auth-page {
-  min-height: 100%;
+  width: 100%;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
 import { listConversations, deleteConversation, type Conversation } from '@/api/conversation'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
+const chatStore = useChatStore()
 
 const conversations = ref<Conversation[]>([])
 const isLoading = ref(true)
@@ -38,7 +41,11 @@ async function handleDelete(id: string, event: Event) {
   if (!confirm('Delete this conversation?')) return
   try {
     await deleteConversation(id)
-    conversations.value = conversations.value.filter(c => c.id !== id)
+    conversations.value = conversations.value.filter((c) => c.id !== id)
+    if (route.params.id === id) {
+      chatStore.clear()
+      router.push('/chat')
+    }
   } catch (e) {
     console.error('Failed to delete:', e)
   }
@@ -55,7 +62,7 @@ function handleLogout() {
 }
 
 defineExpose({
-  loadConversations
+  loadConversations,
 })
 </script>
 
@@ -64,7 +71,14 @@ defineExpose({
     <div class="sidebar-header">
       <div class="logo">Cortex</div>
       <button class="new-chat-btn" @click="newChat">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
@@ -74,9 +88,7 @@ defineExpose({
 
     <div class="sidebar-content">
       <div v-if="isLoading" class="loading">Loading...</div>
-      <div v-else-if="conversations.length === 0" class="empty">
-        No conversations yet
-      </div>
+      <div v-else-if="conversations.length === 0" class="empty">No conversations yet</div>
       <div v-else class="conversation-list">
         <div
           v-for="conv in conversations"
@@ -89,9 +101,18 @@ defineExpose({
             <span class="conv-date">{{ formatDate(conv.updated_at) }}</span>
           </div>
           <button class="delete-btn" @click="handleDelete(conv.id, $event)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <path
+                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+              ></path>
             </svg>
           </button>
         </div>
@@ -104,7 +125,14 @@ defineExpose({
         <span class="user-email">{{ userStore.user?.email }}</span>
       </div>
       <button class="logout-btn" @click="handleLogout">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
           <polyline points="16 17 21 12 16 7"></polyline>
           <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -166,7 +194,8 @@ defineExpose({
   padding: 8px;
 }
 
-.loading, .empty {
+.loading,
+.empty {
   padding: 20px;
   text-align: center;
   color: #9ca3af;
@@ -220,7 +249,9 @@ defineExpose({
   cursor: pointer;
   border-radius: 4px;
   opacity: 0;
-  transition: opacity 0.15s, color 0.15s;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
 }
 
 .conversation-item:hover .delete-btn {

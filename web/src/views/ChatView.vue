@@ -68,8 +68,8 @@ async function handleSend() {
       }
       emit('refresh-conversations')
     }
-  } catch (error: any) {
-    store.addAssistantMessage(`Error: ${error.message}`)
+  } catch (error) {
+    store.addAssistantMessage(`Error: ${(error as Error).message}`)
   } finally {
     store.setLoading(false)
     store.clearStreamingMessage()
