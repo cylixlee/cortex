@@ -62,6 +62,7 @@ function formatDate(dateStr: string) {
 
 function handleLogout() {
   userStore.logout()
+  chatStore.clear()
   router.push('/login')
 }
 
