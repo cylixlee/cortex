@@ -54,14 +54,14 @@ This phase implements the core "Skill Factory" workflow:
 
 ## 2. Technology Stack
 
-| Layer           | Technology                                   |
-| --------------- | -------------------------------------------- |
-| Object Storage  | MinIO (S3 compatible)                        |
-| Vector Store    | pgvector (PostgreSQL)                        |
-| Task Queue      | Redis                                        |
-| Embedding       | External (configured via .env, e.g., Doubao) |
-| AI Framework    | Eino (Sequential Workflow)                   |
-| File Processing | Go standard library (archive/zip)            |
+| Layer           | Technology                                          |
+| --------------- | --------------------------------------------------- |
+| Object Storage  | MinIO (S3 compatible)                              |
+| Vector Store    | pgvector (PostgreSQL)                             |
+| Task Queue      | Redis                                              |
+| Embedding       | Eino (via eino-ext, e.g., Doubao)                 |
+| AI Framework    | Eino (Sequential Workflow + Embedder)              |
+| File Processing | Go standard library (archive/zip)                  |
 
 ---
 
@@ -127,8 +127,9 @@ EMBEDDING_MODEL=embedding-model-name
 ```bash
 go get github.com/minio/minio-go/v7
 go get github.com/redis/go-redis/v9
-go get github.com/tiktoken-go/tiktoken
 ```
+
+Note: Embedding uses Eino's built-in `embedding.Embedder` interface (from `github.com/cloudwego/eino/components/embedding`), no additional token counting library needed.
 
 ---
 
@@ -296,18 +297,31 @@ workflow := workflow.NewSequential(ctx, workflow.SequentialConfig{
 
 ## 7. Embedding Strategy
 
-- Use `tiktoken-go` for token counting
-- Chunk size: 512 tokens
+- Use Eino's built-in `embedding.Embedder` interface for vector generation
+- Chunk size: 512 tokens (approximate, use simple character-based splitting)
 - Overlap: 50 tokens
 - Store embeddings in pgvector
 
 ```go
+import "github.com/cloudwego/eino/components/embedding"
+
+// Create embedding client via eino-ext (e.g., doubao embedding)
+embedder, err := doubao.NewEmbeddingModel(ctx, &doubao.EmbeddingModelConfig{
+    BaseURL:  config.EmbeddingBaseURL,
+    APIKey:   config.EmbeddingAPIKey,
+    Model:    config.EmbeddingModel,
+})
+
+// Generate embeddings
+embeddings, err := embedder.EmbedStrings(ctx, []string{"text to embed"})
+
+// Store in pgvector
 type Chunk struct {
     ID           uuid.UUID
     SkillID      uuid.UUID
     DocumentID   uuid.UUID
     Content      string
-    Embedding    []float32
+    Embedding    []float64  // Eino uses []float64
     ChunkIndex   int
 }
 ```
