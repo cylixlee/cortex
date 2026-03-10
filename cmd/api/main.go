@@ -9,8 +9,10 @@ import (
 	"github.com/cylixlee/cortex/internal/handlers"
 	"github.com/cylixlee/cortex/internal/repository"
 	"github.com/cylixlee/cortex/internal/service"
+	"github.com/cylixlee/cortex/internal/worker"
 	"github.com/cylixlee/cortex/pkg/llm"
 	"github.com/cylixlee/cortex/pkg/middleware"
+	"github.com/cylixlee/cortex/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -25,6 +27,10 @@ func main() {
 	}
 	DB = repository.DB
 
+	if err := repository.AutoMigrate(); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
+
 	llmClient, err := llm.NewClient(
 		context.Background(),
 		cfg.ChatProvider,
@@ -36,9 +42,57 @@ func main() {
 		log.Fatalf("Failed to create LLM client: %v", err)
 	}
 
+	minioClient, err := storage.NewMinIOClient(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create MinIO client: %v", err)
+	}
+
+	if err := minioClient.CreateBucketIfNotExists(context.Background()); err != nil {
+		log.Fatalf("Failed to create MinIO bucket: %v", err)
+	}
+
 	userRepo := repository.NewUserRepository(DB)
 	conversationRepo := repository.NewConversationRepository(DB)
 	messageRepo := repository.NewMessageRepository(DB)
+	skillRepo := repository.NewSkillRepository(DB)
+	documentRepo := repository.NewDocumentRepository(DB)
+	chunkRepo := repository.NewChunkRepository(DB)
+	referenceRepo := repository.NewReferenceRepository(DB)
+
+	embeddingClient, err := llm.NewEmbeddingClient(
+		context.Background(),
+		cfg.EmbeddingProvider,
+		cfg.EmbeddingBaseURL,
+		cfg.EmbeddingAPIKey,
+		cfg.EmbeddingModel,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create embedding client: %v", err)
+	}
+
+	skillService := service.NewSkillService(
+		skillRepo,
+		documentRepo,
+		chunkRepo,
+		referenceRepo,
+		minioClient,
+		embeddingClient,
+	)
+
+	skillWorker, err := worker.NewSkillWorker(
+		skillRepo,
+		documentRepo,
+		chunkRepo,
+		referenceRepo,
+		minioClient,
+		llmClient,
+		cfg,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create skill worker: %v", err)
+	}
+
+	go skillWorker.Start(context.Background())
 
 	userService := service.NewUserService(userRepo, cfg.JWTSecret, cfg.JWTExpiryHours)
 	conversationService := service.NewConversationService(conversationRepo, messageRepo)
@@ -47,6 +101,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(userService)
 	conversationHandler := handlers.NewConversationHandler(conversationService)
 	chatHandler := handlers.NewChatHandler(chatService)
+	skillHandler := handlers.NewSkillHandler(skillService, skillWorker)
 
 	r := gin.Default()
 
@@ -91,6 +146,18 @@ func main() {
 		chat.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 		{
 			chat.POST("", chatHandler.Chat)
+		}
+
+		skills := v1.Group("/skills")
+		skills.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+		{
+			skills.POST("/upload", skillHandler.Upload)
+			skills.GET("", skillHandler.List)
+			skills.GET("/:id", skillHandler.Get)
+			skills.DELETE("/:id", skillHandler.Delete)
+			skills.GET("/:id/status", skillHandler.Status)
+			skills.GET("/:id/status/sse", skillHandler.SSEStatus)
+			skills.GET("/:id/download", skillHandler.Download)
 		}
 	}
 

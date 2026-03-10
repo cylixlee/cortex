@@ -40,6 +40,10 @@ function newChat() {
   router.push('/chat')
 }
 
+function goToSkills() {
+  router.push('/skills')
+}
+
 async function handleDelete(id: string, event: Event) {
   event.stopPropagation()
   if (!confirm('Delete this conversation?')) return
@@ -81,6 +85,12 @@ defineExpose({
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
         New Chat
+      </button>
+      <button class="skills-btn" @click="goToSkills">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        My Skills
       </button>
     </div>
 
@@ -163,6 +173,29 @@ defineExpose({
   background: #f3f4f6;
   border-color: #10a37f;
   color: #10a37f;
+}
+
+.skills-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  margin-top: 8px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.skills-btn:hover {
+  background: #f3f4f6;
+  border-color: #6366f1;
+  color: #6366f1;
 }
 
 .sidebar-content {

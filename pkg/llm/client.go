@@ -140,3 +140,7 @@ func (m *SessionManager) GetOrCreate(ctx context.Context, sessionID string) (*Se
 	m.sessions[sessionID] = session
 	return session, nil
 }
+
+func (c *Client) GetChatModel() model.ToolCallingChatModel {
+	return c.chatModel
+}

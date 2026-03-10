@@ -19,6 +19,7 @@ tasks:
         fi
       - go run ./cmd/migrate
       - go run ./cmd/miniosetup
+      - go run ./cmd/redissetup
     silent: true
 
   install-go:

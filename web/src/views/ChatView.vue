@@ -186,7 +186,7 @@ function newChat() {
 <style scoped>
 .chat-layout {
   flex: 1;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: #fff;

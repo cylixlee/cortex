@@ -47,6 +47,10 @@ func AutoMigrate() error {
 		&models.User{},
 		&models.Conversation{},
 		&models.Message{},
+		&models.Skill{},
+		&models.Document{},
+		&models.Chunk{},
+		&models.Reference{},
 	)
 }
 
