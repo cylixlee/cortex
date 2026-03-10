@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 
 defineOptions({
-  name: 'AuthPage'
+  name: 'AuthPage',
 })
 
 const router = useRouter()
@@ -43,14 +43,7 @@ async function handleSubmit() {
       <form @submit.prevent="handleSubmit" class="auth-form">
         <div class="form-group">
           <label for="email">Email</label>
-          <input
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-            autocomplete="email"
-          />
+          <input id="email" v-model="email" type="email" placeholder="you@example.com" required autocomplete="email" />
         </div>
 
         <div class="form-group">
@@ -69,7 +62,7 @@ async function handleSubmit() {
         <div v-if="error" class="error-message">{{ error }}</div>
 
         <button type="submit" class="submit-btn" :disabled="userStore.isLoading">
-          {{ userStore.isLoading ? 'Please wait...' : (isRegister ? 'Create account' : 'Sign in') }}
+          {{ userStore.isLoading ? 'Please wait...' : isRegister ? 'Create account' : 'Sign in' }}
         </button>
       </form>
 
@@ -95,7 +88,7 @@ async function handleSubmit() {
 
 .auth-container {
   width: 100%;
-  max-width:400px;
+  max-width: 400px;
   background: #fff;
   border: 1px solid #e5e5e5;
   border-radius: 12px;
@@ -144,7 +137,9 @@ async function handleSubmit() {
   border: 1px solid #e5e5e5;
   border-radius: 8px;
   font-size: 15px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
   background: #fff;
 }
 

@@ -11,38 +11,46 @@ tasks:
   install-go:
     desc: Install Go dependencies
     internal: true
-    cmd: go get ./...
+    cmds:
+      - go get ./...
     silent: true
 
   install-vue:
     desc: Install Vue dependencies
     internal: true
     dir: "{{.ROOT_DIR}}/web"
-    cmd: pnpm install
-    silent: true
-
-  build:
-    desc: Build both Go and Vue project to perform static analysis
     cmds:
-      - task: build-go
-      - task: build-vue
-
-  build-go:
-    desc: Build Go project
-    internal: true
-    cmd: go build ./...
+      - pnpm install
     silent: true
 
-  build-vue:
-    desc: Build Vue project
+  check:
+    desc: Perform static analysis for both Go and Vue.
+    cmds:
+      - task: check-go
+      - task: check-vue
+
+  check-go:
+    desc: Perform Go static analysis
+    internal: true
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+    silent: true
+
+  check-vue:
+    desc: Perform Vue static analysis
     internal: true
     dir: "{{.ROOT_DIR}}/web"
-    cmd: pnpm build
+    cmds:
+      - pnpm -s format
+      - pnpm -s lint:eslint
+      - pnpm -s type-check
     silent: true
 
   go:
     desc: Start Go server
-    cmd: go run ./cmd/api
+    cmds:
+      - go run ./cmd/api
     interactive: true
     silent: true
     ignore_error: true
@@ -50,7 +58,8 @@ tasks:
   vue:
     desc: Start Vue server
     dir: "{{.ROOT_DIR}}/web"
-    cmd: pnpm dev
+    cmds:
+      - pnpm dev
     interactive: true
     silent: true
     ignore_error: true

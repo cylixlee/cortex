@@ -27,7 +27,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function addAssistantMessage(content: string) {
-    const existingMsg = messages.value.find(m => m.role === 'assistant' && m.id === 'streaming')
+    const existingMsg = messages.value.find((m) => m.role === 'assistant' && m.id === 'streaming')
     if (existingMsg) {
       existingMsg.content += content
     } else {
@@ -45,7 +45,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function clearStreamingMessage() {
-    const idx = messages.value.findIndex(m => m.id === 'streaming')
+    const idx = messages.value.findIndex((m) => m.id === 'streaming')
     if (idx !== -1) {
       const msg = messages.value[idx]
       if (msg) {

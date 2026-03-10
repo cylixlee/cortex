@@ -66,7 +66,7 @@ export async function deleteConversation(id: string): Promise<void> {
 export async function sendMessage(
   message: string,
   conversationId?: string,
-  onChunk?: (content: string) => void
+  onChunk?: (content: string) => void,
 ): Promise<string | undefined> {
   const token = getToken()
   if (!token) throw new Error('Not authenticated')
@@ -106,7 +106,7 @@ export async function sendMessage(
     for (const line of lines) {
       if (line.startsWith('data: ')) {
         const data = line.slice(6)
-        
+
         if (data.startsWith('{') && data.includes('conversation_id')) {
           try {
             const parsed = JSON.parse(data)
@@ -114,7 +114,7 @@ export async function sendMessage(
           } catch (e) {}
           continue
         }
-        
+
         if (data === '[DONE]') {
           return newConversationId
         }
@@ -125,6 +125,6 @@ export async function sendMessage(
       }
     }
   }
-  
+
   return newConversationId
 }

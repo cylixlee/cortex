@@ -61,7 +61,7 @@ async function handleSend() {
       store.addAssistantMessage(chunk)
       nextTick(() => scrollToBottom())
     })
-    
+
     if (newConversationId) {
       if (!conversationId.value) {
         router.push(`/chat/${newConversationId}`)
@@ -123,14 +123,18 @@ function newChat() {
           </div>
           <h2>How can I help you today?</h2>
         </div>
-        
-        <div
-          v-for="msg in store.messages"
-          :key="msg.id"
-          :class="['message', msg.role]"
-        >
+
+        <div v-for="msg in store.messages" :key="msg.id" :class="['message', msg.role]">
           <div class="message-avatar">
-            <svg v-if="msg.role === 'user'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              v-if="msg.role === 'user'"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
@@ -166,11 +170,7 @@ function newChat() {
             :disabled="store.isLoading"
             rows="1"
           ></textarea>
-          <button 
-            @click="handleSend" 
-            :disabled="store.isLoading || !input.trim()"
-            class="send-btn"
-          >
+          <button @click="handleSend" :disabled="store.isLoading || !input.trim()" class="send-btn">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -285,8 +285,14 @@ function newChat() {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .message.user {
@@ -351,12 +357,22 @@ function newChat() {
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
-.dot:nth-child(1) { animation-delay: -0.32s; }
-.dot:nth-child(2) { animation-delay: -0.16s; }
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
 
 @keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
 }
 
 .input-area {
@@ -374,7 +390,9 @@ function newChat() {
   border: 1px solid #e5e5e5;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .input-container:focus-within {

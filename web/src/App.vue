@@ -26,7 +26,11 @@ function handleRefreshConversations() {
   <div class="app-container">
     <template v-if="userStore.isLoggedIn && route.path !== '/login' && route.path !== '/register'">
       <ConversationList v-if="showSidebar" ref="conversationListRef" class="sidebar-area" />
-      <RouterView @toggle-sidebar="toggleSidebar" @refresh-conversations="handleRefreshConversations" class="main-area" />
+      <RouterView
+        @toggle-sidebar="toggleSidebar"
+        @refresh-conversations="handleRefreshConversations"
+        class="main-area"
+      />
     </template>
     <template v-else>
       <RouterView />
@@ -43,12 +47,19 @@ function handleRefreshConversations() {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
 body {
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'IBM Plex Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: #fff;
