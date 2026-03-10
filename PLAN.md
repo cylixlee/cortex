@@ -1,355 +1,490 @@
-# Cortex Phase 2 Implementation Plan
+# Cortex Phase 3 Implementation Plan
 
 ## Overview
 
-Phase 2 Goal: User Authentication + Conversation History Persistence
+Phase 3 Goal: Skill Factory - Code Upload -> AI Analysis -> Skill Package Generation
 
-This phase adds user authentication (JWT) and persists chat history to PostgreSQL, completing Phase 1's basic chat functionality and laying the foundation for Phase 3 (Knowledge Base Service).
+This phase implements the core "Skill Factory" workflow:
+
+1. **File Upload**: Accept source code ZIP files
+2. **Stage 1**: Overview Agent -> Generate SKILL.md
+3. **Stage 2**: API Retrieval Agent -> Generate references/\*.md
+4. **Dual Output**: Vector storage (RAG) + Object storage (Download)
 
 ---
 
-## 1. Infrastructure Layer
+## 1. Architecture Overview
 
-### 1.1 Configuration Update
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Upload (ZIP)                        │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                    API Gateway (Gin)                     │
+│                   /api/v1/skills/*                      │
+└─────────────────────────────────────────────────────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+┌─────────────────────────┐   ┌─────────────────────────┐
+│   Handler (HTTP)        │   │   Redis (Task Queue)    │
+│   Returns skill_id/task_id│  │   Push task to queue    │
+└─────────────────────────┘   └─────────────────────────┘
+                                            │
+                                            ▼
+┌─────────────────────────────────────────────────────────┐
+│              Worker (Async Consumer)                    │
+│  1. Extract ZIP                                          │
+│  2. Scan source files                                    │
+│  3. Eino Workflow (Stage 1 + Stage 2)                   │
+│  4. Chunk → Embedding → pgvector                        │
+│  5. Package → MinIO                                      │
+│  6. Update status → Redis/DB                            │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│               SSE/WebSocket Status Notification         │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 2. Technology Stack
+
+| Layer           | Technology                                   |
+| --------------- | -------------------------------------------- |
+| Object Storage  | MinIO (S3 compatible)                        |
+| Vector Store    | pgvector (PostgreSQL)                        |
+| Task Queue      | Redis                                        |
+| Embedding       | External (configured via .env, e.g., Doubao) |
+| AI Framework    | Eino (Sequential Workflow)                   |
+| File Processing | Go standard library (archive/zip)            |
+
+---
+
+## 3. Configuration
+
+### 3.1 Config Updates
 
 **File**: `internal/config/config.go`
-
-Add the following fields to the Config struct:
 
 ```go
 type Config struct {
     // Existing
-    ChatProvider string
-    ChatBaseURL  string
-    ChatAPIKey   string
-    ChatModel    string
+    ChatProvider   string
+    ChatBaseURL    string
+    ChatAPIKey     string
+    ChatModel      string
+    DatabaseURL    string
+    JWTSecret      string
+    JWTExpiryHours int
 
-    // New - Database
-    DatabaseURL string  // postgres://user:pass@localhost:5432/cortex
+    // New - MinIO Object Storage
+    MinIOEndpoint  string
+    MinIOAccessKey string
+    MinIOSecretKey string
+    MinIOBucket    string
+    MinIOUseSSL    bool
 
-    // New - JWT Auth
-    JWTSecret       string
-    JWTExpiryHours  int
+    // New - Redis
+    RedisURL string
+
+    // New - Embedding
+    EmbeddingProvider string
+    EmbeddingBaseURL  string
+    EmbeddingAPIKey   string
+    EmbeddingModel    string
 }
 ```
 
-Also update `.env` file with new configuration variables.
+### 3.2 Environment Variables
 
-### 1.2 Project Structure
+Update `.env` with:
 
-```
-internal/
-├── domain/
-│   ├── user.go           # User domain entity
-│   ├── conversation.go   # Conversation domain entity
-│   └── message.go        # Message domain entity
-├── repository/
-│   ├── db.go             # GORM connection configuration
-│   ├── user.go           # User repository
-│   ├── conversation.go   # Conversation repository
-│   └── message.go        # Message repository
-├── service/
-│   ├── user.go           # User service
-│   └── conversation.go   # Conversation service
-├── auth/
-│   ├── claims.go         # JWT Claims definition
-│   └── token.go          # Token generation/validation
-├── handlers/
-│   ├── auth.go           # Auth Handler (new)
-│   ├── conversation.go  # Conversation Handler (new)
-│   └── chat.go           # Chat Handler (modify)
-pkg/
-└── middleware/
-    └── auth.go           # JWT middleware
+```bash
+# MinIO
+MINIO_ENDPOINT=localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=cortex-skills
+MINIO_USE_SSL=false
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Embedding (example: Doubao)
+EMBEDDING_PROVIDER=doubao
+EMBEDDING_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+EMBEDDING_API_KEY=your-api-key
+EMBEDDING_MODEL=embedding-model-name
 ```
 
-### 1.3 Database Schema
+### 3.3 Dependencies
 
-| Table Name      | Fields                                                                                                            |
-| --------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `users`         | id (UUID), email (VARCHAR unique), password_hash (VARCHAR), role (VARCHAR default 'user'), created_at, updated_at |
-| `conversations` | id (UUID), user_id (UUID FK), title (VARCHAR), created_at, updated_at                                             |
-| `messages`      | id (UUID), conversation_id (UUID FK), role (VARCHAR 'user'/'assistant'), content (TEXT), created_at               |
+```bash
+go get github.com/minio/minio-go/v7
+go get github.com/redis/go-redis/v9
+go get github.com/tiktoken-go/tiktoken
+```
 
 ---
 
-## 2. Backend Modules
+## 4. Database Schema
 
-### 2.1 User Authentication Module
+### 4.1 New Tables
 
-**New Files**:
+| Table Name   | Fields                                                                                                                             |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `skills`     | id (UUID), user_id (UUID FK), name (VARCHAR), description (TEXT), status (VARCHAR), storage_path (VARCHAR), created_at, updated_at |
+| `documents`  | id (UUID), skill_id (UUID FK), filename (VARCHAR), language (VARCHAR), content (TEXT), created_at                                  |
+| `chunks`     | id (UUID), skill_id (UUID FK), document_id (UUID FK), content (TEXT), embedding (vector), chunk_index (INT)                        |
+| `references` | id (UUID), skill_id (UUID FK), filename (VARCHAR), content (TEXT), created_at                                                      |
 
-- `internal/auth/claims.go` - JWT Claims struct with UserID, Email, Role
-- `internal/auth/token.go` - Token generation and validation functions
-- `pkg/middleware/auth.go` - JWT authentication middleware
-- `internal/handlers/auth.go` - Register, Login, Refresh, Me handlers
+### 4.2 File Structure
 
-**Dependencies**:
-
-```bash
-go get github.com/golang-jwt/jwt/v5
-go get golang.org/x/crypto
-go get github.com/google/uuid
+```
+internal/models/
+├── skill.go       # Skill model
+├── document.go    # Source document model
+├── chunk.go       # Vector chunk model
+└── reference.go  # Reference document model
 ```
 
-**API Endpoints**:
+---
 
-| Method | Path                    | Description          | Auth |
-| ------ | ----------------------- | -------------------- | ---- |
-| POST   | `/api/v1/auth/register` | User registration    | No   |
-| POST   | `/api/v1/auth/login`    | User login           | No   |
-| POST   | `/api/v1/auth/refresh`  | Refresh access token | No   |
-| GET    | `/api/v1/auth/me`       | Get current user     | Yes  |
+## 5. Backend Modules
 
-**Request/Response Formats**:
+### 5.1 Project Structure
 
-Register:
+```
+internal/
+├── config/
+│   └── config.go                 # Update: add MinIO/Redis/Embedding config
+├── models/
+│   ├── skill.go                 # Skill model
+│   ├── document.go              # Document model
+│   ├── chunk.go                 # Chunk model
+│   └── reference.go            # Reference model
+├── repository/
+│   ├── skill.go                 # Skill CRUD
+│   ├── document.go              # Document CRUD
+│   ├── chunk.go                 # Chunk CRUD
+│   └── reference.go             # Reference CRUD
+├── service/
+│   ├── skill.go                 # Core business logic
+│   ├── embedding.go             # Vector embedding
+│   └── storage.go               # MinIO storage
+├── handlers/
+│   └── skill.go                 # HTTP handlers
+├── worker/
+│   └── skill.go                 # Async task worker
+├── workflows/
+│   └── skill.go                 # Eino workflow
+└── pkg/
+    └── storage/
+        └── minio.go             # MinIO client
+```
+
+### 5.2 API Endpoints
+
+| Method | Path                          | Description                 | Auth |
+| ------ | ----------------------------- | --------------------------- | ---- |
+| POST   | `/api/v1/skills/upload`       | Upload ZIP file             | Yes  |
+| GET    | `/api/v1/skills`              | List user's skills          | Yes  |
+| GET    | `/api/v1/skills/:id`          | Get skill details           | Yes  |
+| GET    | `/api/v1/skills/:id/download` | Download skill package      | Yes  |
+| DELETE | `/api/v1/skills/:id`          | Delete skill                | Yes  |
+| GET    | `/api/v1/skills/:id/status`   | Get processing status (SSE) | Yes  |
+
+### 5.3 Request/Response Formats
+
+**POST /api/v1/skills/upload**:
 
 ```json
-// Request
-{ "email": "user@example.com", "password": "password123" }
-// Response 201
-{ "user_id": "uuid" }
+// Request (multipart/form-data)
+{
+  "file": (ZIP file),
+  "name": "my-awesome-lib"
+}
+
+// Response 202
+{
+  "skill_id": "uuid",
+  "status": "processing"
+}
 ```
 
-Login:
-
-```json
-// Request
-{ "email": "user@example.com", "password": "password123" }
-// Response 200
-{ "access_token": "jwt...", "refresh_token": "jwt..." }
-```
-
-### 2.2 Conversation Management Module
-
-**New Files**:
-
-- `internal/repository/conversation.go` - Conversation CRUD operations
-- `internal/repository/message.go` - Message CRUD operations
-- `internal/service/conversation.go` - Business logic for conversations
-- `internal/handlers/conversation.go` - Conversation REST handlers
-
-**API Endpoints**:
-
-| Method | Path                        | Description                    | Auth |
-| ------ | --------------------------- | ------------------------------ | ---- |
-| GET    | `/api/v1/conversations`     | List user's conversations      | Yes  |
-| POST   | `/api/v1/conversations`     | Create new conversation        | Yes  |
-| GET    | `/api/v1/conversations/:id` | Get conversation with messages | Yes  |
-| DELETE | `/api/v1/conversations/:id` | Delete conversation            | Yes  |
-
-**Request/Response Formats**:
-
-List Conversations:
-
-```json
-// Response 200
-[
-  {
-    "id": "uuid",
-    "title": "Conversation 1",
-    "created_at": "timestamp",
-    "updated_at": "timestamp"
-  }
-]
-```
-
-Create Conversation:
-
-```json
-// Request
-{ "title": "My Conversation" }
-// Response 201
-{ "id": "uuid", "title": "My Conversation", "created_at": "timestamp" }
-```
-
-Get Conversation:
+**GET /api/v1/skills/:id**:
 
 ```json
 // Response 200
 {
   "id": "uuid",
-  "title": "My Conversation",
-  "messages": [
-    {
-      "id": "uuid",
-      "role": "user",
-      "content": "Hello",
-      "created_at": "timestamp"
-    },
-    {
-      "id": "uuid",
-      "role": "assistant",
-      "content": "Hi!",
-      "created_at": "timestamp"
-    }
-  ]
+  "name": "my-awesome-lib",
+  "description": "A description",
+  "status": "completed",
+  "skill": {
+    "overview": "# SKILL.md content...",
+    "references": [
+      { "filename": "api.md", "content": "..." },
+      { "filename": "types.md", "content": "..." }
+    ]
+  },
+  "created_at": "timestamp",
+  "updated_at": "timestamp"
 }
 ```
 
-### 2.3 Chat Endpoint Modification
-
-**Modify**: `internal/handlers/chat.go`
-
-Changes:
-
-- Add JWT authentication middleware
-- Accept optional `conversation_id` in request
-- If no conversation_id, create new conversation
-- Persist user message and assistant response to database
-
-**Modified Request Format**:
+**GET /api/v1/skills/:id/status** (SSE):
 
 ```json
-// Request
-{ "message": "Hello", "conversation_id": "uuid (optional)" }
-// Response: SSE stream as before
+// Streaming
+{"status": "processing", "progress": 25}
+{"status": "processing", "progress": 50}
+{"status": "processing", "progress": 75}
+{"status": "completed", "progress": 100}
 ```
 
 ---
 
-## 3. Frontend Structure
+## 6. Eino Workflow Design
 
-### 3.1 New Files
+### 6.1 Two-Stage Sequential Workflow
+
+```go
+// Stage 1: Overview Agent
+overviewAgent := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
+    Name:        "overview_agent",
+    Instruction: overviewSystemPrompt,
+    Model:       chatModel,
+})
+
+// Stage 2: API Retrieval Agent (depends on Stage 1 output)
+apiRetrievalAgent := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
+    Name:        "api_retrieval_agent",
+    Instruction: apiRetrievalSystemPrompt,
+    Model:       chatModel,
+})
+
+// Sequential Workflow
+workflow := workflow.NewSequential(ctx, workflow.SequentialConfig{
+    Nodes: []workflow.Node{
+        {Name: "overview", Agent: overviewAgent},
+        {Name: "api_retrieval", Agent: apiRetrievalAgent},
+    },
+})
+```
+
+### 6.2 Prompts
+
+**Overview Agent** (generate SKILL.md):
+
+- Analyze source code structure
+- Identify main capabilities and features
+- Generate standardized SKILL.md format
+
+**API Retrieval Agent** (generate references/):
+
+- Based on SKILL.md output
+- Extract detailed API signatures
+- Generate reference documentation (api.md, types.md, etc.)
+
+---
+
+## 7. Embedding Strategy
+
+- Use `tiktoken-go` for token counting
+- Chunk size: 512 tokens
+- Overlap: 50 tokens
+- Store embeddings in pgvector
+
+```go
+type Chunk struct {
+    ID           uuid.UUID
+    SkillID      uuid.UUID
+    DocumentID   uuid.UUID
+    Content      string
+    Embedding    []float32
+    ChunkIndex   int
+}
+```
+
+---
+
+## 8. Frontend Modules
+
+### 8.1 File Structure
 
 ```
 web/src/
 ├── api/
-│   ├── auth.ts            # login, register, refresh, me
-│   ├── conversation.ts    # list, create, get, delete
-│   └── chat.ts           # send message (modify)
-├── stores/
-│   ├── user.ts           # user state (token, user info)
-│   └── chat.ts          # chat state (modify: conversation_id)
+│   └── skill.ts                 # Skill API client
 ├── views/
-│   ├── Login.vue         # Login page
-│   ├── Register.vue     # Register page
-│   ├── ConversationList.vue # Conversation list page
-│   └── ChatView.vue     # Chat page (modify: load history)
+│   ├── SkillList.vue            # Skill list page
+│   ├── Upload.vue               # Upload page
+│   └── SkillDetail.vue          # Skill detail page
+├── components/
+│   ├── SkillCard.vue            # Skill card component
+│   ├── FileUploader.vue         # File upload component
+│   └── MarkdownRenderer.vue     # Markdown renderer
 └── router/
-    └── index.ts          # Add auth guards
+    └── index.ts                 # Update: add routes
 ```
 
-### 3.2 API Functions
-
-**auth.ts**:
+### 8.2 Routes
 
 ```typescript
-interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-}
-export async function login(
-  email: string,
-  password: string,
-): Promise<LoginResponse>;
-export async function register(
-  email: string,
-  password: string,
-): Promise<{ user_id: string }>;
-export async function getCurrentUser(): Promise<User>;
+{
+  path: '/skills',
+  name: 'skills',
+  component: SkillList,
+  meta: { requiresAuth: true },
+},
+{
+  path: '/skills/upload',
+  name: 'skill-upload',
+  component: Upload,
+  meta: { requiresAuth: true },
+},
+{
+  path: '/skills/:id',
+  name: 'skill-detail',
+  component: SkillDetail,
+  meta: { requiresAuth: true },
+},
 ```
 
-**conversation.ts**:
+---
 
-```typescript
-export async function listConversations(): Promise<Conversation[]>;
-export async function createConversation(title: string): Promise<Conversation>;
-export async function getConversation(
-  id: string,
-): Promise<ConversationWithMessages>;
-export async function deleteConversation(id: string): Promise<void>;
+## 9. Implementation Order
+
+### Phase 3A: Infrastructure (Priority: High)
+
+1. Update `internal/config/config.go` with new fields
+2. Update `.env` with MinIO/Redis/Embedding config
+3. Add MinIO/Redis dependencies
+4. Create `pkg/storage/minio.go` - MinIO client
+5. Update `docker-compose.yml` - add MinIO and Redis services
+
+### Phase 3B: Database Layer (Priority: High)
+
+1. Create `internal/models/skill.go`
+2. Create `internal/models/document.go`
+3. Create `internal/models/chunk.go`
+4. Create `internal/models/reference.go`
+5. Update `internal/repository/db.go` - add migrations
+
+### Phase 3C: Repository Layer (Priority: High)
+
+1. Create `internal/repository/skill.go`
+2. Create `internal/repository/document.go`
+3. Create `internal/repository/chunk.go`
+4. Create `internal/repository/reference.go`
+
+### Phase 3D: Service Layer (Priority: High)
+
+1. Create `internal/service/storage.go` - MinIO operations
+2. Create `internal/service/embedding.go` - Vector embedding
+3. Create `internal/service/skill.go` - Core business logic
+
+### Phase 3E: Workflow & Worker (Priority: High)
+
+1. Create `internal/workflows/skill.go` - Eino workflow
+2. Create `internal/worker/skill.go` - Async task worker
+
+### Phase 3F: Handler Layer (Priority: High)
+
+1. Create `internal/handlers/skill.go` - HTTP handlers
+2. Update `cmd/api/main.go` - wire dependencies and routes
+
+### Phase 3G: Frontend (Priority: Medium)
+
+1. Create `web/src/api/skill.ts` - API client
+2. Create `web/src/views/SkillList.vue`
+3. Create `web/src/views/Upload.vue`
+4. Create `web/src/views/SkillDetail.vue`
+5. Create components: SkillCard, FileUploader, MarkdownRenderer
+6. Update `web/src/router/index.ts`
+
+---
+
+## 10. Docker Updates
+
+### 10.1 docker-compose.yml
+
+Add MinIO and Redis services:
+
+```yaml
+services:
+  # Existing: PostgreSQL
+  postgres:
+    image: pgvector/pgvector:pg16
+    # ... existing config
+
+  # New: MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: cortex-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # New: Redis
+  redis:
+    image: redis:7-alpine
+    container_name: cortex-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  minio_data:
+  redis_data:
 ```
 
-**chat.ts** (modify):
-
-- Add `Authorization: Bearer <token>` header
-- Add optional `conversation_id` parameter
-
-### 3.3 Router Guards
-
-Add navigation guards to protect routes:
-
-- `/chat` - requires authentication
-- `/conversations` - requires authentication
-- `/login` and `/register` - redirect to chat if already authenticated
-
 ---
 
-## 4. Implementation Order
+## 11. Considerations
 
-### Phase 2A: Database Infrastructure (Priority: High)
+### 11.1 Error Handling
 
-1. Add GORM dependency: `go get gorm.io/gorm` and `go get gorm.io/driver/postgres`
-2. Update config with DatabaseURL
-3. Create domain models (user, conversation, message)
-4. Implement repositories (user, conversation, message)
-5. Test database connection
-
-### Phase 2B: User Authentication (Priority: High)
-
-1. Implement JWT auth module (claims.go, token.go)
-2. Create auth middleware
-3. Implement user repository and service
-4. Create auth handlers (register, login)
-5. Wire dependencies in main.go
-
-### Phase 2C: Conversation Persistence (Priority: High)
-
-1. Implement conversation and message repositories
-2. Create conversation service
-3. Create conversation handlers
-4. Modify chat handler to persist messages
-5. Test full chat flow with persistence
-
-### Phase 2D: Frontend Integration (Priority: Medium)
-
-1. Create Login.vue and Register.vue
-2. Add auth API functions
-3. Create user store
-4. Add router guards
-5. Create ConversationList.vue
-6. Modify ChatView.vue to load history
-7. Test end-to-end flow
-
----
-
-## 5. Technology Stack
-
-| Layer            | Technology                         |
-| ---------------- | ---------------------------------- |
-| Database         | PostgreSQL + GORM                  |
-| Auth             | JWT (github.com/golang-jwt/jwt/v5) |
-| Password Hashing | bcrypt (golang.org/x/crypto)       |
-| Frontend State   | Pinia                              |
-| Frontend Routing | Vue Router                         |
-
----
-
-## 6. Considerations
-
-### Database Connection
-
-- Use connection pooling with appropriate MaxOpenConns and MaxIdleConns
-- Implement retry logic with exponential backoff for connection
-- Use context for all database operations
-
-### Security
-
-- Always hash passwords with bcrypt (cost >= 12 for production)
-- Use environment variables for secrets (JWT_SECRET, DATABASE_URL)
-- Implement rate limiting on auth endpoints
-- Validate all input in handlers
-
-### Error Handling
-
-- Return generic error messages to clients (don't leak internal errors)
+- Implement retry logic for MinIO and Redis connections
+- Use context for all async operations
+- Return generic error messages to clients
 - Log detailed errors server-side
-- Use proper HTTP status codes
 
-### Session Management
+### 11.2 Security
 
-- Store JWT in httpOnly cookie or localStorage (consider CSRF implications)
-- Implement token refresh mechanism
-- Consider token blacklisting for logout
+- Validate uploaded files (check ZIP format, max size)
+- Sanitize filenames to prevent path traversal
+- Use UUIDs for all resource identifiers
+- Implement proper CORS settings
+
+### 11.3 Performance
+
+- Process large ZIP files in chunks
+- Use connection pooling for MinIO and Redis
+- Implement proper timeouts for LLM calls
+- Use streaming for large file uploads/downloads
+
+### 11.4 Testing
+
+- Unit tests for repositories and services
+- Integration tests for workflow
+- E2E tests for upload → process → download flow
