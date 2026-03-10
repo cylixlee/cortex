@@ -8,6 +8,7 @@ import (
 	"github.com/cylixlee/cortex/internal/graceful"
 	"github.com/cylixlee/cortex/internal/handlers"
 	"github.com/cylixlee/cortex/internal/repository"
+	"github.com/cylixlee/cortex/internal/service"
 	"github.com/cylixlee/cortex/pkg/llm"
 	"github.com/cylixlee/cortex/pkg/middleware"
 	"github.com/gin-gonic/gin"
@@ -39,9 +40,13 @@ func main() {
 	conversationRepo := repository.NewConversationRepository(DB)
 	messageRepo := repository.NewMessageRepository(DB)
 
-	authHandler := handlers.NewAuthHandler(userRepo, cfg.JWTSecret, cfg.JWTExpiryHours)
-	conversationHandler := handlers.NewConversationHandler(conversationRepo, messageRepo)
-	chatHandler := handlers.NewChatHandler(llmClient, conversationRepo, messageRepo, userRepo)
+	userService := service.NewUserService(userRepo, cfg.JWTSecret, cfg.JWTExpiryHours)
+	conversationService := service.NewConversationService(conversationRepo, messageRepo)
+	chatService := service.NewChatService(conversationRepo, messageRepo, userRepo, llmClient)
+
+	authHandler := handlers.NewAuthHandler(userService)
+	conversationHandler := handlers.NewConversationHandler(conversationService)
+	chatHandler := handlers.NewChatHandler(chatService)
 
 	r := gin.Default()
 

@@ -1,36 +1,48 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
-	"strings"
 
-	"github.com/cylixlee/cortex/internal/models"
-	"github.com/cylixlee/cortex/internal/repository"
-	"github.com/cylixlee/cortex/pkg/llm"
+	"github.com/cylixlee/cortex/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"time"
 )
 
 type ChatHandler struct {
-	sessionManager   *llm.SessionManager
-	conversationRepo *repository.ConversationRepository
-	messageRepo      *repository.MessageRepository
-	userRepo         *repository.UserRepository
+	chatService *service.ChatService
 }
 
-func NewChatHandler(client *llm.Client, conversationRepo *repository.ConversationRepository, messageRepo *repository.MessageRepository, userRepo *repository.UserRepository) *ChatHandler {
+func NewChatHandler(chatService *service.ChatService) *ChatHandler {
 	return &ChatHandler{
-		sessionManager:   llm.NewSessionManager(client),
-		conversationRepo: conversationRepo,
-		messageRepo:      messageRepo,
-		userRepo:         userRepo,
+		chatService: chatService,
 	}
 }
 
 type ChatRequest struct {
 	Message        string `json:"message" binding:"required"`
 	ConversationID string `json:"conversation_id"`
+}
+
+type SSEConversationStart struct {
+	ConversationID string `json:"conversation_id"`
+}
+
+func writeSSE(w http.ResponseWriter, data interface{}) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte("data: " + string(b) + "\n\n"))
+	return err
+}
+
+func writeSSEDone(w http.ResponseWriter) {
+	w.Write([]byte("data: [DONE]\n\n"))
+}
+
+func writeSSEError(w http.ResponseWriter, errMsg string) {
+	w.Write([]byte("data: {\"error\": \"" + errMsg + "\"}\n\n"))
 }
 
 func (h *ChatHandler) Chat(c *gin.Context) {
@@ -42,53 +54,45 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 		return
 	}
 
-	var conversation *models.Conversation
+	conversationID := req.ConversationID
+	var conversation *service.ConversationOutput
 	var err error
 
-	if req.ConversationID != "" {
-		convID, err := uuid.Parse(req.ConversationID)
+	if conversationID != "" {
+		convID, _ := uuid.Parse(conversationID)
+		output, err := h.chatService.GetOrCreateConversation(userID, &conversationID)
 		if err == nil {
-			conversation, err = h.conversationRepo.FindByID(convID)
-			if err != nil || conversation.UserID != userID {
-				conversation = nil
+			conversation = &service.ConversationOutput{
+				ID:        output.ID,
+				Title:     output.Title,
+				CreatedAt: output.CreatedAt.Format("2006-01-02T15:04:05Z"),
+				UpdatedAt: output.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 			}
+			_ = convID
 		}
 	}
 
 	if conversation == nil {
-		title := req.Message
-		title = strings.ReplaceAll(title, "\n", " ")
-		title = strings.ReplaceAll(title, "\r", "")
-		title = strings.TrimSpace(title)
-		if len(title) > 50 {
-			title = title[:50] + "..."
-		}
-		if title == "" {
-			title = "New Chat"
-		}
-		conversation = &models.Conversation{
-			UserID: userID,
-			Title:  title,
-		}
-		if err := h.conversationRepo.Create(conversation); err != nil {
+		conv, err := h.chatService.GenerateTitle(userID, req.Message)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create conversation"})
 			return
 		}
+		conversation = &service.ConversationOutput{
+			ID:        conv.ID,
+			Title:     conv.Title,
+			CreatedAt: conv.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt: conv.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		}
 	}
 
-	userMessage := &models.Message{
-		ConversationID: conversation.ID,
-		Role:           models.MessageRoleUser,
-		Content:        req.Message,
-		CreatedAt:      time.Now(),
-	}
-	if err := h.messageRepo.Create(userMessage); err != nil {
+	_, err = h.chatService.SaveUserMessage(conversation.ID, req.Message)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user message"})
 		return
 	}
 
-	sessionID := conversation.ID.String()
-	session, err := h.sessionManager.GetOrCreate(c.Request.Context(), sessionID)
+	session, err := h.chatService.GetSession(c.Request.Context(), conversation.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -105,7 +109,7 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 		return
 	}
 
-	c.Writer.Write([]byte("data: {\"conversation_id\": \"" + conversation.ID.String() + "\"}\n\n"))
+	writeSSE(c.Writer, SSEConversationStart{ConversationID: conversation.ID.String()})
 	flusher.Flush()
 
 	var assistantContent string
@@ -125,25 +129,15 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 	})
 
 	if assistantContent != "" {
-		assistantMessage := &models.Message{
-			ConversationID: conversation.ID,
-			Role:           models.MessageRoleAssistant,
-			Content:        assistantContent,
-			CreatedAt:      time.Now(),
-		}
-		h.messageRepo.Create(assistantMessage)
-
-		conversation.UpdatedAt = time.Now()
-		h.conversationRepo.Update(conversation)
+		h.chatService.SaveAssistantMessage(conversation.ID, assistantContent)
+		h.chatService.UpdateConversationTimestamp(conversation.ID)
 	}
 
 	if err != nil {
-		c.Writer.Write([]byte("data: [ERROR] "))
-		c.Writer.Write([]byte(err.Error()))
-		c.Writer.Write([]byte("\n\n"))
+		writeSSEError(c.Writer, err.Error())
 		flusher.Flush()
 	}
 
-	c.Writer.Write([]byte("data: [DONE]\n\n"))
+	writeSSEDone(c.Writer)
 	flusher.Flush()
 }

@@ -3,21 +3,18 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/cylixlee/cortex/internal/models"
-	"github.com/cylixlee/cortex/internal/repository"
+	"github.com/cylixlee/cortex/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type ConversationHandler struct {
-	conversationRepo *repository.ConversationRepository
-	messageRepo      *repository.MessageRepository
+	conversationService *service.ConversationService
 }
 
-func NewConversationHandler(conversationRepo *repository.ConversationRepository, messageRepo *repository.MessageRepository) *ConversationHandler {
+func NewConversationHandler(conversationService *service.ConversationService) *ConversationHandler {
 	return &ConversationHandler{
-		conversationRepo: conversationRepo,
-		messageRepo:      messageRepo,
+		conversationService: conversationService,
 	}
 }
 
@@ -33,10 +30,10 @@ type ConversationResponse struct {
 }
 
 type MessageResponse struct {
-	ID        uuid.UUID          `json:"id"`
-	Role      models.MessageRole `json:"role"`
-	Content   string             `json:"content"`
-	CreatedAt string             `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Role      string    `json:"role"`
+	Content   string    `json:"content"`
+	CreatedAt string    `json:"created_at"`
 }
 
 type ConversationDetailResponse struct {
@@ -50,19 +47,19 @@ type ConversationDetailResponse struct {
 func (h *ConversationHandler) List(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
 
-	conversations, err := h.conversationRepo.FindByUserID(userID, 100, 0)
+	conversations, err := h.conversationService.ListByUser(userID, 100, 0)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list conversations"})
 		return
 	}
 
-	var response []ConversationResponse
+	response := []ConversationResponse{}
 	for _, conv := range conversations {
 		response = append(response, ConversationResponse{
 			ID:        conv.ID,
 			Title:     conv.Title,
-			CreatedAt: conv.CreatedAt.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt: conv.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt: conv.CreatedAt,
+			UpdatedAt: conv.UpdatedAt,
 		})
 	}
 
@@ -78,21 +75,17 @@ func (h *ConversationHandler) Create(c *gin.Context) {
 		return
 	}
 
-	conversation := &models.Conversation{
-		UserID: userID,
-		Title:  req.Title,
-	}
-
-	if err := h.conversationRepo.Create(conversation); err != nil {
+	output, err := h.conversationService.Create(userID, req.Title)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create conversation"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, ConversationResponse{
-		ID:        conversation.ID,
-		Title:     conversation.Title,
-		CreatedAt: conversation.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt: conversation.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:        output.ID,
+		Title:     output.Title,
+		CreatedAt: output.CreatedAt,
+		UpdatedAt: output.UpdatedAt,
 	})
 }
 
@@ -106,39 +99,35 @@ func (h *ConversationHandler) Get(c *gin.Context) {
 		return
 	}
 
-	conversation, err := h.conversationRepo.FindByID(id)
+	output, err := h.conversationService.Get(userID, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Conversation not found"})
-		return
-	}
-
-	if conversation.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
-		return
-	}
-
-	messages, err := h.messageRepo.FindByConversationID(id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get messages"})
+		switch err {
+		case service.ErrConversationNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "Conversation not found"})
+		case service.ErrAccessDenied:
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get conversation"})
+		}
 		return
 	}
 
 	var messageResponses []MessageResponse
-	for _, msg := range messages {
+	for _, msg := range output.Messages {
 		messageResponses = append(messageResponses, MessageResponse{
 			ID:        msg.ID,
-			Role:      msg.Role,
+			Role:      string(msg.Role),
 			Content:   msg.Content,
-			CreatedAt: msg.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt: msg.CreatedAt,
 		})
 	}
 
 	c.JSON(http.StatusOK, ConversationDetailResponse{
-		ID:        conversation.ID,
-		Title:     conversation.Title,
+		ID:        output.ID,
+		Title:     output.Title,
 		Messages:  messageResponses,
-		CreatedAt: conversation.CreatedAt.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt: conversation.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt: output.CreatedAt,
+		UpdatedAt: output.UpdatedAt,
 	})
 }
 
@@ -152,19 +141,18 @@ func (h *ConversationHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	conversation, err := h.conversationRepo.FindByID(id)
+	err = h.conversationService.Delete(userID, id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Conversation not found"})
+		switch err {
+		case service.ErrConversationNotFound:
+			c.JSON(http.StatusNotFound, gin.H{"error": "Conversation not found"})
+		case service.ErrAccessDenied:
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete conversation"})
+		}
 		return
 	}
-
-	if conversation.UserID != userID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
-		return
-	}
-
-	h.messageRepo.DeleteByConversationID(id)
-	h.conversationRepo.Delete(id)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Conversation deleted"})
 }

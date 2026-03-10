@@ -21,7 +21,7 @@ func InitDB(databaseURL string) error {
 	var err error
 
 	config := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Silent),
 	}
 
 	DB, err = gorm.Open(postgres.Open(databaseURL), config)

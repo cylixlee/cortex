@@ -211,3 +211,4 @@ cortex/
 5. **Maintain skill package structure** - always generate both SKILL.md and references/
 6. **PostgreSQL with pgvector** - use vector extension for semantic search
 7. **Separation of concerns** - handlers → services → repository layers
+8. **Use `task check` for validation** - you are not permitted to run any commands directly except `task check`

@@ -3,22 +3,18 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/cylixlee/cortex/internal/auth"
-	"github.com/cylixlee/cortex/internal/models"
-	"github.com/cylixlee/cortex/internal/repository"
+	"github.com/cylixlee/cortex/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
-	userRepo     *repository.UserRepository
-	tokenService *auth.TokenService
+	userService *service.UserService
 }
 
-func NewAuthHandler(userRepo *repository.UserRepository, jwtSecret string, jwtExpiryHours int) *AuthHandler {
+func NewAuthHandler(userService *service.UserService) *AuthHandler {
 	return &AuthHandler{
-		userRepo:     userRepo,
-		tokenService: auth.NewTokenService(jwtSecret, jwtExpiryHours),
+		userService: userService,
 	}
 }
 
@@ -38,10 +34,10 @@ type AuthResponse struct {
 }
 
 type UserResponse struct {
-	ID        uuid.UUID       `json:"id"`
-	Email     string          `json:"email"`
-	Role      models.UserRole `json:"role"`
-	CreatedAt string          `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	CreatedAt string    `json:"created_at"`
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -51,30 +47,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	existingUser, _ := h.userRepo.FindByEmail(req.Email)
-	if existingUser != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email already registered"})
-		return
-	}
-
-	hashedPassword, err := auth.HashPassword(req.Password)
+	output, err := h.userService.Register(req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		switch err {
+		case service.ErrEmailAlreadyRegistered:
+			c.JSON(http.StatusConflict, gin.H{"error": "Email already registered"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
+		}
 		return
 	}
 
-	user := &models.User{
-		Email:        req.Email,
-		PasswordHash: hashedPassword,
-		Role:         models.RoleUser,
-	}
-
-	if err := h.userRepo.Create(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"user_id": user.ID})
+	c.JSON(http.StatusCreated, gin.H{"user_id": output.UserID})
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -84,32 +68,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userRepo.FindByEmail(req.Email)
+	output, err := h.userService.Login(req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-		return
-	}
-
-	if !auth.CheckPassword(req.Password, user.PasswordHash) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-		return
-	}
-
-	accessToken, err := h.tokenService.GenerateToken(user.ID, user.Email, string(user.Role))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
-
-	refreshToken, err := h.tokenService.GenerateToken(user.ID, user.Email, string(user.Role))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
 		return
 	}
 
 	c.JSON(http.StatusOK, AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		AccessToken:  output.AccessToken,
+		RefreshToken: output.RefreshToken,
 	})
 }
 
@@ -122,21 +89,9 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	claims, err := h.tokenService.ValidateToken(req.RefreshToken)
+	accessToken, err := h.userService.RefreshToken(req.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
-		return
-	}
-
-	user, err := h.userRepo.FindByID(claims.UserID)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
-		return
-	}
-
-	accessToken, err := h.tokenService.GenerateToken(user.ID, user.Email, string(user.Role))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
@@ -146,22 +101,22 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
 
-	user, err := h.userRepo.FindByID(userID)
+	output, err := h.userService.GetUser(userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
 	c.JSON(http.StatusOK, UserResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:        output.ID,
+		Email:     output.Email,
+		Role:      string(output.Role),
+		CreatedAt: output.CreatedAt,
 	})
 }
 
 func (h *AuthHandler) ListUsers(c *gin.Context) {
-	users, err := h.userRepo.List(100, 0)
+	users, err := h.userService.ListUsers(100, 0)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list users"})
 		return
@@ -172,8 +127,8 @@ func (h *AuthHandler) ListUsers(c *gin.Context) {
 		response = append(response, UserResponse{
 			ID:        user.ID,
 			Email:     user.Email,
-			Role:      user.Role,
-			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			Role:      string(user.Role),
+			CreatedAt: user.CreatedAt,
 		})
 	}
 
@@ -188,7 +143,7 @@ func (h *AuthHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	if err := h.userRepo.Delete(id); err != nil {
+	if err := h.userService.DeleteUser(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}

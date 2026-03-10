@@ -23,6 +23,10 @@ async function loadConversations() {
     conversations.value = await listConversations()
   } catch (e) {
     console.error('Failed to load conversations:', e)
+    if ((e as Error).message.includes('401') || (e as Error).message.includes('Not authenticated')) {
+      localStorage.clear()
+      window.location.href = '/login'
+    }
   } finally {
     isLoading.value = false
   }
