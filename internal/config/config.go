@@ -22,6 +22,19 @@ type Config struct {
 	DatabaseURL    string
 	JWTSecret      string
 	JWTExpiryHours int
+
+	MinIOEndpoint  string
+	MinIOAccessKey string
+	MinIOSecretKey string
+	MinIOBucket    string
+	MinIOUseSSL    bool
+
+	RedisURL string
+
+	EmbeddingProvider string
+	EmbeddingBaseURL  string
+	EmbeddingAPIKey   string
+	EmbeddingModel    string
 }
 
 func Load() *Config {
@@ -29,6 +42,8 @@ func Load() *Config {
 	if jwtExpiry == 0 {
 		jwtExpiry = 24
 	}
+
+	minioUseSSL := os.Getenv("MINIO_USE_SSL") == "true" || os.Getenv("MINIO_USE_SSL") == "1"
 
 	return &Config{
 		ChatProvider:   os.Getenv("CHAT_PROVIDER"),
@@ -38,5 +53,18 @@ func Load() *Config {
 		DatabaseURL:    os.Getenv("DATABASE_URL"),
 		JWTSecret:      os.Getenv("JWT_SECRET"),
 		JWTExpiryHours: jwtExpiry,
+
+		MinIOEndpoint:  os.Getenv("MINIO_ENDPOINT"),
+		MinIOAccessKey: os.Getenv("MINIO_ACCESS_KEY"),
+		MinIOSecretKey: os.Getenv("MINIO_SECRET_KEY"),
+		MinIOBucket:    os.Getenv("MINIO_BUCKET"),
+		MinIOUseSSL:    minioUseSSL,
+
+		RedisURL: os.Getenv("REDIS_URL"),
+
+		EmbeddingProvider: os.Getenv("EMBEDDING_PROVIDER"),
+		EmbeddingBaseURL:  os.Getenv("EMBEDDING_BASE_URL"),
+		EmbeddingAPIKey:   os.Getenv("EMBEDDING_API_KEY"),
+		EmbeddingModel:    os.Getenv("EMBEDDING_MODEL"),
 	}
 }

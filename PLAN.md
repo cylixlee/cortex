@@ -298,24 +298,44 @@ workflow := workflow.NewSequential(ctx, workflow.SequentialConfig{
 ## 7. Embedding Strategy
 
 - Use Eino's built-in `embedding.Embedder` interface for vector generation
+- Use factory pattern (like `pkg/llm/client.go`) to support multiple embedding providers
 - Chunk size: 512 tokens (approximate, use simple character-based splitting)
 - Overlap: 50 tokens
 - Store embeddings in pgvector
 
+### Factory Pattern Implementation
+
+Similar to `pkg/llm/client.go`, create `pkg/llm/embedding.go`:
+
 ```go
-import "github.com/cloudwego/eino/components/embedding"
+package llm
 
-// Create embedding client via eino-ext (e.g., doubao embedding)
-embedder, err := doubao.NewEmbeddingModel(ctx, &doubao.EmbeddingModelConfig{
-    BaseURL:  config.EmbeddingBaseURL,
-    APIKey:   config.EmbeddingAPIKey,
-    Model:    config.EmbeddingModel,
-})
+import (
+    "context"
+    "errors"
+    
+    "github.com/cloudwego/eino/components/embedding"
+    "github.com/cloudwego/eino-ext/components/embedding/doubao"
+)
 
-// Generate embeddings
-embeddings, err := embedder.EmbedStrings(ctx, []string{"text to embed"})
+func NewEmbedder(ctx context.Context, provider, baseURL, apiKey, model string) (embedding.Embedder, error) {
+    switch provider {
+    case "doubao":
+        return doubao.NewEmbeddingModel(ctx, &doubao.EmbeddingModelConfig{
+            BaseURL: baseURL,
+            APIKey:  apiKey,
+            Model:   model,
+        })
+    // Future: add more providers (openai, azure, etc.)
+    default:
+        return nil, errors.New("unsupported embedding provider: " + provider)
+    }
+}
+```
 
-// Store in pgvector
+### Chunk Model
+
+```go
 type Chunk struct {
     ID           uuid.UUID
     SkillID      uuid.UUID

@@ -6,7 +6,20 @@ tasks:
     cmds:
       - task: install-go
       - task: install-vue
+      - |
+        if command -v docker &> /dev/null; then
+          echo "Using docker to create containers..."
+          docker compose up -d
+        elif command -v podman &> /dev/null; then
+          echo "Using podman to create containers..."
+          podman compose up -d
+        else
+          echo "No docker or podman found. Please manually edit Taskfile to support your container engine."
+          return 1
+        fi
       - go run ./cmd/migrate
+      - go run ./cmd/miniosetup
+    silent: true
 
   install-go:
     desc: Install Go dependencies
