@@ -38,11 +38,7 @@ func InitDB(databaseURL string) error {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	if err := AutoMigrate(); err != nil {
-		return fmt.Errorf("failed to run auto migrate: %w", err)
-	}
-
-	log.Println("Database connected and migrated successfully")
+	log.Println("Database connected successfully")
 	return nil
 }
 

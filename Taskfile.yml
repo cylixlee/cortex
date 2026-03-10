@@ -2,10 +2,11 @@ version: 3
 
 tasks:
   install:
-    desc: Install dependencies for both Go and Vue
+    desc: Install dependencies for both Go and Vue, and migrate database.
     cmds:
       - task: install-go
       - task: install-vue
+      - go run ./cmd/migrate
 
   install-go:
     desc: Install Go dependencies
