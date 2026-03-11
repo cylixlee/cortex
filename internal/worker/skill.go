@@ -150,6 +150,7 @@ func (w *SkillWorker) processTask(ctx context.Context, taskKey string) {
 		w.skillService.UpdateSkillStatusWithError(ctx, skillID, models.SkillStatusFailed, 0, err.Error())
 		return
 	}
+	defer obj.Close()
 
 	objBytes, err := io.ReadAll(obj)
 	if err != nil {

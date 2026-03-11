@@ -57,6 +57,8 @@ type SkillListResponse struct {
 	Skills []SkillResponse `json:"skills"`
 }
 
+const maxFileSize = 100 << 20 // 100MB
+
 func (h *SkillHandler) Upload(c *gin.Context) {
 	userID := c.MustGet("user_id").(uuid.UUID)
 
@@ -69,6 +71,11 @@ func (h *SkillHandler) Upload(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+
+	if file.Size > maxFileSize {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File size exceeds 100MB limit"})
 		return
 	}
 
@@ -93,7 +100,7 @@ func (h *SkillHandler) Upload(c *gin.Context) {
 
 	output, err := h.skillService.UploadSkill(c.Request.Context(), input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload skill: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload skill"})
 		return
 	}
 
@@ -111,7 +118,7 @@ func (h *SkillHandler) List(c *gin.Context) {
 
 	skills, err := h.skillService.GetUserSkills(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list skills: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list skills"})
 		return
 	}
 
@@ -232,7 +239,6 @@ func (h *SkillHandler) SSEStatus(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
 
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()

@@ -1,6 +1,239 @@
-# Cortex Phase 3 Implementation Plan
+# Cortex Implementation Plan
 
-## Overview
+## Current Status
+
+- **Phase 1**: 基础聊天功能 (Chat + LLM) ✅ 100%
+- **Phase 2**: 用户认证 + 对话历史 ✅ 100%
+- **Phase 3**: Skill 生成工作流 ✅ 95%
+- **Phase 4**: 前端技能页面 + 下载功能 ✅ 100%
+- **Phase 5**: 优化 Skill 格式兼容性 ⏳ 未开始
+
+---
+
+# Plan 1: 代码质量改进 (Code Quality Improvements)
+
+## 1.1 已完成的修复
+
+| 问题 | 修复位置 | 状态 |
+|------|----------|------|
+| 权限控制不足 | `handlers/auth.go` - ListUsers/DeleteUser 管理员检查 | ✅ |
+| 敏感信息泄露 | 统一错误响应格式 | ✅ |
+| 文件上传无限制 | 添加 100MB 大小限制 | ✅ |
+| CORS 通配符 | 改为配置化 `CORS_ALLOWED_ORIGINS` | ✅ |
+| MinIO 资源泄漏 | 添加 defer obj.Close() | ✅ |
+| uuid.Parse 错误忽略 | 添加错误处理 | ✅ |
+| SessionManager 内存泄漏 | 添加 30 分钟过期清理 | ✅ |
+| 登录无速率限制 | 添加内存速率限制 | ✅ |
+| LLM 无超时 | 添加可配置超时 CHAT_TIMEOUT | ✅ |
+| DeleteSkill 无事务 | 添加事务删除 | ✅ |
+
+---
+
+## 1.2 待完成的修复
+
+### Middleware 包重构
+
+**问题**: `pkg/middleware/ratelimit.go` 和 `pkg/middleware/login_ratelimit.go` 包含下划线
+
+**方案**: 重构为 `pkg/middleware/ratelimit/` 包结构
+
+```
+pkg/middleware/ratelimit/
+├── ratelimit.go    # 公共接口定义
+├── login.go        # 登录速率限制（内存实现）
+└── redis.go        # Redis 实现（可选）
+```
+
+### 配置项更新
+
+在 `.env` 中添加:
+
+```bash
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:5173
+
+# Chat Timeout (秒)
+CHAT_TIMEOUT=120
+```
+
+---
+
+# Plan 2: Vue 前端改进 (Frontend Improvements)
+
+## 2.1 问题清单
+
+| 问题 | 严重程度 | 修复方案 |
+|------|----------|----------|
+| API_BASE 不统一 | 🔴 高 | 创建 `api/client.ts` 统一配置 |
+| getToken 逻辑重复 | 🔴 高 | 提取到 `api/auth.ts` |
+| fetchWithAuth 逻辑重复 | 🔴 高 | 统一使用 |
+| 未使用文件 | 🟡 中 | 删除 `counter.ts`, `chat.ts` |
+| formatDate 重复 | 🟡 中 | 提取到 `utils/date.ts` |
+| 类型定义分散 | 🟡 中 | 创建 `src/types/` |
+| 缺少公共组件 | 🟡 中 | 提取 Badge, Loading, Empty |
+| 硬编码 API 地址 | 🟡 中 | 使用 `.env` |
+| 缺少 Markdown 库 | 🟡 中 | 添加 `marked` |
+
+## 2.2 实施步骤
+
+### Step 1: 统一 API 配置
+
+创建 `web/src/api/client.ts`:
+
+```typescript
+// web/src/api/client.ts
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1'
+
+export { API_BASE }
+```
+
+更新所有 API 文件导入 `API_BASE`
+
+### Step 2: 删除未使用文件
+
+- `web/src/stores/counter.ts`
+- `web/src/api/chat.ts`
+
+### Step 3: 提取公共类型
+
+创建 `web/src/types/`:
+
+```
+web/src/types/
+├── api.ts          # API 响应类型
+├── skill.ts        # Skill 相关类型
+├── conversation.ts # 会话类型
+└── index.ts        # 统一导出
+```
+
+### Step 4: 提取公共组件
+
+创建 `web/src/components/`:
+
+```
+web/src/components/
+├── StatusBadge.vue    # 状态徽章
+├── LoadingSpinner.vue # 加载中
+└── EmptyState.vue    # 空状态
+```
+
+### Step 5: 环境变量配置
+
+创建 `web/.env`:
+
+```bash
+VITE_API_BASE=http://localhost:8080/api/v1
+```
+
+### Step 6: 添加 Markdown 支持
+
+```bash
+cd web && pnpm add marked
+```
+
+---
+
+# Plan 3: 架构优化 (Architecture Improvements)
+
+## 3.1 Go 后端 - DDD 演进
+
+### 当前结构 (扁平三层)
+
+```
+internal/
+├── handlers/  → services → repository
+```
+
+### 建议结构 (引入 Domain 层)
+
+```
+internal/
+├── domain/           # 领域层 - 业务实体和规则
+│   ├── skill/        # Skill 聚合
+│   │   ├── entity.go
+│   │   └── errors.go
+│   └── user/        # User 聚合
+├── handlers/         # 接口层
+├── services/         # 应用层
+└── repository/       # 基础设施层
+```
+
+### 错误定义原则
+
+错误应该定义在产生它的包里，而非中央 errors 包：
+
+```go
+// internal/domain/skill/errors.go
+var (
+    ErrSkillNotFound = errors.New("skill not found")
+    ErrSkillNotReady = errors.New("skill not ready")
+)
+
+// internal/service/skill.go
+if err := r.db.First(&skill, id).Error; err != nil {
+    return nil, fmt.Errorf("find skill %s: %w", id, domain.ErrSkillNotFound)
+}
+```
+
+## 3.2 可观测性 (Observability)
+
+### 添加 OpenTelemetry
+
+```bash
+go get go.opentelemetry.io/otel
+go get go.opentelemetry.io/otel/exporters/otlp
+```
+
+### 添加 Prometheus 指标
+
+```bash
+go get github.com/prometheus/client_golang/prometheus
+```
+
+### 健康检查增强
+
+```go
+r.GET("/health", func(c *gin.Context) {
+    // 检查 DB
+    // 检查 Redis
+    // 检查 MinIO
+    c.JSON(200, gin.H{
+        "status": "ok",
+        "db": "ok",
+        "redis": "ok",
+        "minio": "ok",
+    })
+})
+```
+
+---
+
+# Implementation Order
+
+## Phase A: Middleware 重构 (Priority: High)
+
+1. 重构 `pkg/middleware/ratelimit/` 包结构
+2. 更新 `cmd/api/main.go` 导入路径
+3. 添加 `.env` 配置项
+
+## Phase B: Vue 前端改进 (Priority: High)
+
+1. 创建 `api/client.ts` 统一 API 配置
+2. 删除未使用文件
+3. 创建 `types/` 目录
+4. 创建公共组件
+5. 配置环境变量
+6. 添加 Markdown 支持
+
+## Phase C: 架构演进 (Priority: Medium)
+
+1. 引入 domain 层（可选）
+2. 添加可观测性
+3. 增强健康检查
+
+---
+
+# Original Phase 3 Implementation Plan
 
 Phase 3 Goal: Skill Factory - Code Upload -> AI Analysis -> Skill Package Generation
 

@@ -68,3 +68,25 @@ func (r *SkillRepository) UpdateStatusWithError(id uuid.UUID, status models.Skil
 func (r *SkillRepository) Delete(id uuid.UUID) error {
 	return r.db.Delete(&models.Skill{}, "id = ?", id).Error
 }
+
+func (r *SkillRepository) DeleteWithRelations(id uuid.UUID) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("skill_id = ?", id).Delete(&models.Chunk{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("skill_id = ?", id).Delete(&models.Document{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("skill_id = ?", id).Delete(&models.Reference{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Delete(&models.Skill{}, "id = ?", id).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}

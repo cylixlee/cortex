@@ -1,10 +1,6 @@
-const API_BASE = 'http://localhost:8080'
+import { getToken, API_BASE } from './client'
 
-function getToken(): string | null {
-  return localStorage.getItem('access_token')
-}
-
-interface Skill {
+export interface Skill {
   id: string
   name: string
   description: string
@@ -14,7 +10,7 @@ interface Skill {
   updated_at: string
 }
 
-interface SkillDetail extends Skill {
+export interface SkillDetail extends Skill {
   skill?: {
     overview: string
     references: Array<{
@@ -26,7 +22,7 @@ interface SkillDetail extends Skill {
 
 export async function listSkills(): Promise<Skill[]> {
   const token = getToken()
-  const response = await fetch(`${API_BASE}/api/v1/skills`, {
+  const response = await fetch(`${API_BASE}/skills`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -71,7 +67,7 @@ export async function uploadSkill(
       reject(new Error('Upload failed'))
     })
 
-    xhr.open('POST', `${API_BASE}/api/v1/skills/upload`)
+    xhr.open('POST', `${API_BASE}/skills/upload`)
     xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     xhr.send(formData)
   })
@@ -79,7 +75,7 @@ export async function uploadSkill(
 
 export async function getSkill(id: string): Promise<SkillDetail> {
   const token = getToken()
-  const response = await fetch(`${API_BASE}/api/v1/skills/${id}`, {
+  const response = await fetch(`${API_BASE}/skills/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -94,7 +90,7 @@ export async function getSkill(id: string): Promise<SkillDetail> {
 
 export async function deleteSkill(id: string): Promise<void> {
   const token = getToken()
-  const response = await fetch(`${API_BASE}/api/v1/skills/${id}`, {
+  const response = await fetch(`${API_BASE}/skills/${id}`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -108,7 +104,7 @@ export async function deleteSkill(id: string): Promise<void> {
 
 export async function getSkillStatus(id: string): Promise<{ status: string; progress: number }> {
   const token = getToken()
-  const response = await fetch(`${API_BASE}/api/v1/skills/${id}/status`, {
+  const response = await fetch(`${API_BASE}/skills/${id}/status`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -126,7 +122,7 @@ export async function subscribeSkillStatus(
   onStatus: (status: string, progress: number) => void,
 ): Promise<() => void> {
   const token = getToken()
-  const response = await fetch(`${API_BASE}/api/v1/skills/${id}/status/sse`, {
+  const response = await fetch(`${API_BASE}/skills/${id}/status/sse`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -169,7 +165,7 @@ export async function subscribeSkillStatus(
 
 export async function downloadSkill(id: string, filename: string): Promise<void> {
   const token = getToken()
-  const response = await fetch(`${API_BASE}/api/v1/skills/${id}/download`, {
+  const response = await fetch(`${API_BASE}/skills/${id}/download`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

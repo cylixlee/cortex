@@ -116,6 +116,12 @@ func (h *AuthHandler) Me(c *gin.Context) {
 }
 
 func (h *AuthHandler) ListUsers(c *gin.Context) {
+	role := c.MustGet("user_role").(string)
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		return
+	}
+
 	users, err := h.userService.ListUsers(100, 0)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list users"})
@@ -136,6 +142,12 @@ func (h *AuthHandler) ListUsers(c *gin.Context) {
 }
 
 func (h *AuthHandler) DeleteUser(c *gin.Context) {
+	role := c.MustGet("user_role").(string)
+	if role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Admin access required"})
+		return
+	}
+
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {

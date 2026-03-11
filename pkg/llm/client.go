@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/cloudwego/eino-ext/components/model/deepseek"
 	"github.com/cloudwego/eino/adk"
@@ -12,15 +13,21 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
+const (
+	sessionExpiry   = 30 * time.Minute
+	cleanupInterval = 5 * time.Minute
+)
+
 type Client struct {
 	chatModel model.ToolCallingChatModel
 }
 
 type Session struct {
-	client   *Client
-	id       string
-	messages []adk.Message
-	runner   *adk.Runner
+	client    *Client
+	id        string
+	messages  []adk.Message
+	runner    *adk.Runner
+	createdAt time.Time
 }
 
 func NewClient(ctx context.Context, provider, baseURL, apiKey, modelName string) (*Client, error) {
@@ -64,10 +71,11 @@ func (c *Client) CreateSession(ctx context.Context, sessionID string) (*Session,
 	})
 
 	return &Session{
-		client:   c,
-		id:       sessionID,
-		messages: make([]adk.Message, 0),
-		runner:   runner,
+		client:    c,
+		id:        sessionID,
+		messages:  make([]adk.Message, 0),
+		runner:    runner,
+		createdAt: time.Now(),
 	}, nil
 }
 
@@ -118,9 +126,32 @@ type SessionManager struct {
 }
 
 func NewSessionManager(client *Client) *SessionManager {
-	return &SessionManager{
+	m := &SessionManager{
 		client:   client,
 		sessions: make(map[string]*Session),
+	}
+	go m.cleanupLoop()
+	return m
+}
+
+func (m *SessionManager) cleanupLoop() {
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		m.cleanup()
+	}
+}
+
+func (m *SessionManager) cleanup() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+	for id, session := range m.sessions {
+		if now.Sub(session.createdAt) > sessionExpiry {
+			delete(m.sessions, id)
+		}
 	}
 }
 

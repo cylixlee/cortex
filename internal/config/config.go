@@ -19,6 +19,7 @@ type Config struct {
 	ChatBaseURL    string
 	ChatAPIKey     string
 	ChatModel      string
+	ChatTimeout    int
 	DatabaseURL    string
 	JWTSecret      string
 	JWTExpiryHours int
@@ -35,12 +36,19 @@ type Config struct {
 	EmbeddingBaseURL  string
 	EmbeddingAPIKey   string
 	EmbeddingModel    string
+
+	CORSAllowedOrigins string
 }
 
 func Load() *Config {
 	jwtExpiry, _ := strconv.Atoi(os.Getenv("JWT_EXPIRY_HOURS"))
 	if jwtExpiry == 0 {
 		jwtExpiry = 24
+	}
+
+	chatTimeout, _ := strconv.Atoi(os.Getenv("CHAT_TIMEOUT"))
+	if chatTimeout == 0 {
+		chatTimeout = 120
 	}
 
 	minioUseSSL := os.Getenv("MINIO_USE_SSL") == "true" || os.Getenv("MINIO_USE_SSL") == "1"
@@ -50,6 +58,7 @@ func Load() *Config {
 		ChatBaseURL:    os.Getenv("CHAT_BASE_URL"),
 		ChatAPIKey:     os.Getenv("CHAT_API_KEY"),
 		ChatModel:      os.Getenv("CHAT_MODEL"),
+		ChatTimeout:    chatTimeout,
 		DatabaseURL:    os.Getenv("DATABASE_URL"),
 		JWTSecret:      os.Getenv("JWT_SECRET"),
 		JWTExpiryHours: jwtExpiry,
@@ -66,5 +75,7 @@ func Load() *Config {
 		EmbeddingBaseURL:  os.Getenv("EMBEDDING_BASE_URL"),
 		EmbeddingAPIKey:   os.Getenv("EMBEDDING_API_KEY"),
 		EmbeddingModel:    os.Getenv("EMBEDDING_MODEL"),
+
+		CORSAllowedOrigins: os.Getenv("CORS_ALLOWED_ORIGINS"),
 	}
 }

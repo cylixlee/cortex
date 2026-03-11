@@ -92,17 +92,13 @@ func (s *SkillService) DeleteSkill(ctx context.Context, skillID uuid.UUID) error
 		return err
 	}
 
-	if err := s.skillRepo.Delete(skillID); err != nil {
+	if err := s.skillRepo.DeleteWithRelations(skillID); err != nil {
 		return err
 	}
 
 	if skill.StoragePath != "" {
 		s.minioClient.Client().RemoveObject(ctx, s.minioClient.Bucket(), skill.StoragePath, minio.RemoveObjectOptions{})
 	}
-
-	s.chunkRepo.DeleteBySkillID(skillID)
-	s.documentRepo.DeleteBySkillID(skillID)
-	s.referenceRepo.DeleteBySkillID(skillID)
 
 	return nil
 }

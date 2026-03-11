@@ -12,6 +12,7 @@ import (
 	"github.com/cylixlee/cortex/internal/worker"
 	"github.com/cylixlee/cortex/pkg/llm"
 	"github.com/cylixlee/cortex/pkg/middleware"
+	"github.com/cylixlee/cortex/pkg/middleware/ratelimit"
 	"github.com/cylixlee/cortex/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -103,9 +104,11 @@ func main() {
 	chatHandler := handlers.NewChatHandler(chatService)
 	skillHandler := handlers.NewSkillHandler(skillService, skillWorker)
 
+	handlers.InitChatTimeout(cfg)
+
 	r := gin.Default()
 
-	r.Use(corsMiddleware())
+	r.Use(corsMiddleware(cfg))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -116,7 +119,7 @@ func main() {
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)
-			auth.POST("/login", authHandler.Login)
+			auth.POST("/login", ratelimit.Login(), authHandler.Login)
 			auth.POST("/refresh", authHandler.Refresh)
 		}
 
@@ -165,9 +168,25 @@ func main() {
 	graceful.Run(r, ":8080")
 }
 
-func corsMiddleware() gin.HandlerFunc {
+func corsMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		allowedOrigin := cfg.CORSAllowedOrigins
+		if allowedOrigin == "" {
+			allowedOrigin = "*"
+		}
+
+		requestOrigin := c.Request.Header.Get("Origin")
+		if requestOrigin != "" {
+			if allowedOrigin == "*" {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+			} else {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
