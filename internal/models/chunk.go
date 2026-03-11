@@ -12,7 +12,7 @@ type Chunk struct {
 	SkillID    uuid.UUID      `gorm:"type:uuid;not null;index" json:"skill_id"`
 	DocumentID uuid.UUID      `gorm:"type:uuid;not null;index" json:"document_id"`
 	Content    string         `gorm:"type:text;not null" json:"content"`
-	Embedding  []float64      `gorm:"type:jsonb" json:"embedding,omitempty"`
+	Embedding  Vector         `gorm:"type:vector(2560)" json:"embedding,omitempty"`
 	ChunkIndex int            `gorm:"type:int;not null" json:"chunk_index"`
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`

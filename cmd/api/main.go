@@ -12,7 +12,6 @@ import (
 	"github.com/cylixlee/cortex/internal/worker"
 	"github.com/cylixlee/cortex/pkg/llm"
 	"github.com/cylixlee/cortex/pkg/middleware"
-	"github.com/cylixlee/cortex/pkg/middleware/ratelimit"
 	"github.com/cylixlee/cortex/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -97,7 +96,7 @@ func main() {
 
 	userService := service.NewUserService(userRepo, cfg.JWTSecret, cfg.JWTExpiryHours)
 	conversationService := service.NewConversationService(conversationRepo, messageRepo)
-	chatService := service.NewChatService(conversationRepo, messageRepo, userRepo, llmClient)
+	chatService := service.NewChatService(conversationRepo, messageRepo, userRepo, llmClient, embeddingClient, chunkRepo)
 
 	authHandler := handlers.NewAuthHandler(userService)
 	conversationHandler := handlers.NewConversationHandler(conversationService)
@@ -119,7 +118,7 @@ func main() {
 		auth := v1.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)
-			auth.POST("/login", ratelimit.Login(), authHandler.Login)
+			auth.POST("/login", authHandler.Login)
 			auth.POST("/refresh", authHandler.Refresh)
 		}
 

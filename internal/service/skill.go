@@ -203,7 +203,7 @@ func (s *SkillService) generateEmbeddings(ctx context.Context, skillID uuid.UUID
 				SkillID:    skillID,
 				DocumentID: doc.ID,
 				Content:    chunkText,
-				Embedding:  embeddings[0],
+				Embedding:  models.Float64ToVector(embeddings[0]),
 				ChunkIndex: chunkIndex,
 			}
 

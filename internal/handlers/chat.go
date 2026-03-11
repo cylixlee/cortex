@@ -3,7 +3,9 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cylixlee/cortex/internal/config"
@@ -33,6 +35,7 @@ func NewChatHandler(chatService *service.ChatService) *ChatHandler {
 type ChatRequest struct {
 	Message        string `json:"message" binding:"required"`
 	ConversationID string `json:"conversation_id"`
+	EnableRAG      bool   `json:"enable_rag"`
 }
 
 type SSEConversationStart struct {
@@ -129,8 +132,20 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 	flusher.Flush()
 
 	var assistantContent string
+	userMessage := req.Message
 
-	err = session.Send(ctx, req.Message, func(content string, err error) bool {
+	if req.EnableRAG {
+		contexts, err := h.chatService.RetrieveContext(ctx, req.Message, userID, 5)
+		if err != nil {
+			log.Printf("RAG retrieval failed: %v", err)
+		} else if len(contexts) > 0 {
+			userMessage = "Based on the following context:\n\n" +
+				strings.Join(contexts, "\n\n---\n\n") +
+				"\n\nQuestion: " + req.Message
+		}
+	}
+
+	err = session.Send(ctx, userMessage, func(content string, err error) bool {
 		if err != nil {
 			return false
 		}

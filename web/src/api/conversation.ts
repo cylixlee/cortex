@@ -63,13 +63,17 @@ export async function sendMessage(
   message: string,
   conversationId?: string,
   onChunk?: (content: string) => void,
+  enableRag?: boolean,
 ): Promise<string | undefined> {
   const token = getToken()
   if (!token) throw new Error('Not authenticated')
 
-  const body: { message: string; conversation_id?: string } = { message }
+  const body: { message: string; conversation_id?: string; enable_rag?: boolean } = { message }
   if (conversationId) {
     body.conversation_id = conversationId
+  }
+  if (enableRag) {
+    body.enable_rag = enableRag
   }
 
   const response = await fetch(`${API_BASE}/chat`, {
@@ -101,23 +105,33 @@ export async function sendMessage(
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
-        const data = line.slice(6)
-
-        if (data.startsWith('{') && data.includes('conversation_id')) {
-          try {
-            const parsed = JSON.parse(data)
-            newConversationId = parsed.conversation_id
-          } catch (e) {}
-          continue
-        }
+        const data = line.slice(6).trim()
 
         if (data === '[DONE]') {
           return newConversationId
         }
-        if (data.startsWith('[ERROR]')) {
-          throw new Error(data)
+
+        if (data.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(data)
+            if (parsed.conversation_id) {
+              newConversationId = parsed.conversation_id
+            } else if (parsed.error) {
+              throw new Error(parsed.error)
+            }
+          } catch (e) {
+            // JSON parse failed, treat as regular content
+            if (data) {
+              onChunk?.(data)
+            }
+          }
+          continue
         }
-        onChunk?.(data)
+
+        // Non-JSON content (streaming response)
+        if (data) {
+          onChunk?.(data)
+        }
       }
     }
   }

@@ -16,6 +16,8 @@ type ChatService struct {
 	messageRepo      *repository.MessageRepository
 	userRepo         *repository.UserRepository
 	sessionManager   *llm.SessionManager
+	embeddingClient  llm.Embedder
+	chunkRepo        *repository.ChunkRepository
 }
 
 func NewChatService(
@@ -23,12 +25,16 @@ func NewChatService(
 	messageRepo *repository.MessageRepository,
 	userRepo *repository.UserRepository,
 	client *llm.Client,
+	embeddingClient llm.Embedder,
+	chunkRepo *repository.ChunkRepository,
 ) *ChatService {
 	return &ChatService{
 		conversationRepo: conversationRepo,
 		messageRepo:      messageRepo,
 		userRepo:         userRepo,
 		sessionManager:   llm.NewSessionManager(client),
+		embeddingClient:  embeddingClient,
+		chunkRepo:        chunkRepo,
 	}
 }
 
@@ -127,4 +133,22 @@ func (s *ChatService) UpdateConversationTimestamp(conversationID uuid.UUID) erro
 func (s *ChatService) GetSession(ctx context.Context, conversationID uuid.UUID) (*llm.Session, error) {
 	sessionID := conversationID.String()
 	return s.sessionManager.GetOrCreate(ctx, sessionID)
+}
+
+func (s *ChatService) RetrieveContext(ctx context.Context, query string, userID uuid.UUID, topK int) ([]string, error) {
+	embeddings, err := s.embeddingClient.EmbedStrings(ctx, []string{query})
+	if err != nil {
+		return nil, err
+	}
+
+	chunks, err := s.chunkRepo.SearchByEmbeddingForUser(embeddings[0], userID, topK)
+	if err != nil {
+		return nil, err
+	}
+
+	contexts := make([]string, len(chunks))
+	for i, chunk := range chunks {
+		contexts[i] = chunk.Content
+	}
+	return contexts, nil
 }
