@@ -68,3 +68,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Oh My OpenCode
+.sisyphus/
