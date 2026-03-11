@@ -13,20 +13,14 @@
 
     <template v-else-if="skill">
       <div class="status-section">
-        <span class="status-badge" :class="skill.status">
-          {{ skill.status }}
-        </span>
-        <span v-if="skill.status === 'processing'" class="progress">
-          <span class="mini-spinner"></span>
-          {{ skill.progress }}%
-        </span>
+        <StageIndicator :stage="skill.stage" />
       </div>
 
-      <div v-if="skill.status === 'processing'" class="processing-notice">
+      <div v-if="skill.stage < 5" class="processing-notice">
         <p>Your skill is being processed. This may take a few minutes.</p>
       </div>
 
-      <div v-else-if="skill.status === 'completed' && skill.skill" class="content-section">
+      <div v-else-if="skill.stage === 5 && skill.skill" class="content-section">
         <div class="section">
           <h2>Overview</h2>
           <div class="markdown-content" v-html="renderMarkdown(skill.skill.overview)"></div>
@@ -45,7 +39,7 @@
         </div>
       </div>
 
-      <div v-else-if="skill.status === 'failed'" class="error-section">
+      <div v-else-if="skill.stage === 6" class="error-section">
         <p>Processing failed. Please try again.</p>
         <button class="btn-retry" @click="handleDelete">Delete and Retry</button>
       </div>
@@ -57,6 +51,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getSkill, deleteSkill, subscribeSkillStatus, downloadSkill } from '@/api/skill'
+import StageIndicator from '@/components/StageIndicator.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -65,7 +60,7 @@ interface SkillData {
   id: string
   name: string
   status: string
-  progress: number
+  stage: number
   skill?: {
     overview: string
     references: Array<{
@@ -86,11 +81,11 @@ const loadSkill = async () => {
   try {
     skill.value = await getSkill(route.params.id as string)
 
-    if (skill.value.status === 'processing') {
-      unsubscribe = await subscribeSkillStatus(route.params.id as string, (status, progress) => {
+    if (skill.value.stage < 5) {
+      unsubscribe = await subscribeSkillStatus(route.params.id as string, (stage, name) => {
         if (skill.value) {
-          skill.value.status = status
-          skill.value.progress = progress
+          skill.value.stage = stage
+          skill.value.status = name
         }
       })
     }

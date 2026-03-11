@@ -13,9 +13,8 @@
     <div v-else class="skills-grid">
       <div v-for="skill in skills" :key="skill.id" class="skill-card" @click="goToDetail(skill.id)">
         <div class="skill-name">{{ skill.name }}</div>
-        <div class="skill-status" :class="skill.status">
-          <span class="status-badge">{{ skill.status }}</span>
-          <span v-if="skill.status === 'processing'" class="progress"> {{ skill.progress }}% </span>
+        <div class="skill-status">
+          <StageIndicator :stage="skill.stage" />
         </div>
         <div class="skill-date">{{ formatDate(skill.created_at) }}</div>
         <button class="btn-delete" @click.stop="handleDelete(skill.id)">Delete</button>
@@ -28,6 +27,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { listSkills, deleteSkill } from '@/api/skill'
+import StageIndicator from '@/components/StageIndicator.vue'
 
 const router = useRouter()
 const skills = ref<
@@ -35,7 +35,7 @@ const skills = ref<
     id: string
     name: string
     status: string
-    progress: number
+    stage: number
     created_at: string
   }>
 >([])

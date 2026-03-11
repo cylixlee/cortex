@@ -103,42 +103,29 @@ func (s *SkillService) DeleteSkill(ctx context.Context, skillID uuid.UUID) error
 	return nil
 }
 
-func (s *SkillService) UpdateSkillStatus(ctx context.Context, skillID uuid.UUID, status models.SkillStatus, progress int) error {
-	return s.skillRepo.UpdateStatus(skillID, status, progress)
+func (s *SkillService) UpdateSkillStage(ctx context.Context, skillID uuid.UUID, stage models.SkillStage) error {
+	return s.skillRepo.UpdateStage(skillID, stage)
 }
 
-func (s *SkillService) UpdateSkillStatusWithError(ctx context.Context, skillID uuid.UUID, status models.SkillStatus, progress int, errMsg string) error {
-	return s.skillRepo.UpdateStatusWithError(skillID, status, progress, errMsg)
+func (s *SkillService) UpdateSkillStageWithError(ctx context.Context, skillID uuid.UUID, stage models.SkillStage, errMsg string) error {
+	return s.skillRepo.UpdateStageWithError(skillID, stage, errMsg)
 }
 
 func (s *SkillService) ProcessSkill(ctx context.Context, skillID uuid.UUID, fileContent []byte) ([]models.Document, error) {
-	if err := s.skillRepo.UpdateStatus(skillID, models.SkillStatusProcessing, 10); err != nil {
+	if err := s.skillRepo.UpdateStage(skillID, models.StageExtracting); err != nil {
 		return nil, err
 	}
 
 	docs, err := s.extractAndScanFiles(ctx, skillID, fileContent)
 	if err != nil {
-		s.skillRepo.UpdateStatusWithError(skillID, models.SkillStatusFailed, 0, err.Error())
-		return nil, err
-	}
-
-	if err := s.skillRepo.UpdateStatus(skillID, models.SkillStatusProcessing, 30); err != nil {
+		s.skillRepo.UpdateStageWithError(skillID, models.StageFailed, err.Error())
 		return nil, err
 	}
 
 	if err := s.generateEmbeddings(ctx, skillID, docs); err != nil {
-		s.skillRepo.UpdateStatusWithError(skillID, models.SkillStatusFailed, 0, err.Error())
+		s.skillRepo.UpdateStageWithError(skillID, models.StageFailed, err.Error())
 		return nil, err
 	}
-
-	if err := s.skillRepo.UpdateStatus(skillID, models.SkillStatusCompleted, 100); err != nil {
-		return nil, err
-	}
-
-	skill, _ := s.skillRepo.FindByID(skillID)
-	skill.Status = models.SkillStatusCompleted
-	skill.Progress = 100
-	s.skillRepo.Update(skill)
 
 	return docs, nil
 }

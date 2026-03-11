@@ -5,7 +5,7 @@ export interface Skill {
   name: string
   description: string
   status: string
-  progress: number
+  stage: number
   created_at: string
   updated_at: string
 }
@@ -102,7 +102,7 @@ export async function deleteSkill(id: string): Promise<void> {
   }
 }
 
-export async function getSkillStatus(id: string): Promise<{ status: string; progress: number }> {
+export async function getSkillStatus(id: string): Promise<{ stage: number; name: string }> {
   const token = getToken()
   const response = await fetch(`${API_BASE}/skills/${id}/status`, {
     headers: {
@@ -119,7 +119,7 @@ export async function getSkillStatus(id: string): Promise<{ status: string; prog
 
 export async function subscribeSkillStatus(
   id: string,
-  onStatus: (status: string, progress: number) => void,
+  onStage: (stage: number, name: string) => void,
 ): Promise<() => void> {
   const token = getToken()
   const response = await fetch(`${API_BASE}/skills/${id}/status/sse`, {
@@ -146,9 +146,9 @@ export async function subscribeSkillStatus(
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = JSON.parse(line.slice(6))
-          onStatus(data.status, data.progress)
+          onStage(data.stage, data.name)
 
-          if (data.status === 'completed' || data.status === 'failed') {
+          if (data.name === 'completed' || data.name === 'failed') {
             return
           }
         }

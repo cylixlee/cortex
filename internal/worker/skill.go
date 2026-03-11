@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"time"
 
 	"github.com/cylixlee/cortex/internal/config"
 	"github.com/cylixlee/cortex/internal/models"
@@ -33,12 +32,6 @@ type SkillWorker struct {
 	workflow      *workflows.SkillWorkflow
 	redisClient   *redis.Client
 	taskChannel   chan string
-}
-
-type TaskMessage struct {
-	SkillID  string `json:"skill_id"`
-	UserID   string `json:"user_id"`
-	Filename string `json:"filename"`
 }
 
 func NewSkillWorker(
@@ -113,15 +106,6 @@ func (w *SkillWorker) EnqueueTask(skillID string) {
 	w.taskChannel <- skillID
 }
 
-func (w *SkillWorker) InitTaskStatus(skillID string) {
-	ctx := context.Background()
-	id, err := uuid.Parse(skillID)
-	if err != nil {
-		return
-	}
-	w.publishStatus(ctx, id, "processing", 0)
-}
-
 func (w *SkillWorker) processTask(ctx context.Context, taskKey string) {
 	log.Printf("Processing task: %s", taskKey)
 
@@ -131,49 +115,45 @@ func (w *SkillWorker) processTask(ctx context.Context, taskKey string) {
 		return
 	}
 
-	w.publishStatus(ctx, skillID, "processing", 0)
+	w.publishStage(ctx, skillID, models.StageExtracting)
 
 	skill, err := w.skillRepo.FindByID(skillID)
 	if err != nil {
 		log.Printf("Failed to find skill: %v", err)
-		w.publishStatus(ctx, skillID, "failed", 0)
-		return
-	}
-
-	if err := w.skillService.UpdateSkillStatus(ctx, skillID, models.SkillStatusProcessing, 10); err != nil {
-		log.Printf("Failed to update status: %v", err)
+		w.publishStage(ctx, skillID, models.StageFailed)
 		return
 	}
 
 	obj, err := w.minioClient.Client().GetObject(ctx, w.minioClient.Bucket(), skill.StoragePath, minio.GetObjectOptions{})
 	if err != nil {
-		w.skillService.UpdateSkillStatusWithError(ctx, skillID, models.SkillStatusFailed, 0, err.Error())
+		w.skillService.UpdateSkillStageWithError(ctx, skillID, models.StageFailed, err.Error())
+		w.publishStage(ctx, skillID, models.StageFailed)
 		return
 	}
 	defer obj.Close()
 
 	objBytes, err := io.ReadAll(obj)
 	if err != nil {
-		w.skillService.UpdateSkillStatusWithError(ctx, skillID, models.SkillStatusFailed, 0, err.Error())
+		w.skillService.UpdateSkillStageWithError(ctx, skillID, models.StageFailed, err.Error())
+		w.publishStage(ctx, skillID, models.StageFailed)
 		return
 	}
 
 	docs, err := w.skillService.ProcessSkill(ctx, skillID, objBytes)
 	if err != nil {
 		log.Printf("Failed to process skill: %v", err)
+		w.publishStage(ctx, skillID, models.StageFailed)
 		return
 	}
 
-	if err := w.skillService.UpdateSkillStatus(ctx, skillID, models.SkillStatusProcessing, 50); err != nil {
-		log.Printf("Failed to update status: %v", err)
-		return
-	}
+	w.publishStage(ctx, skillID, models.StageAnalyzing)
 
 	codeContext := buildCodeContext(docs)
 
 	result, err := w.workflow.Run(ctx, codeContext)
 	if err != nil {
-		w.skillService.UpdateSkillStatusWithError(ctx, skillID, models.SkillStatusFailed, 60, err.Error())
+		w.skillService.UpdateSkillStageWithError(ctx, skillID, models.StageFailed, err.Error())
+		w.publishStage(ctx, skillID, models.StageFailed)
 		return
 	}
 
@@ -190,45 +170,48 @@ func (w *SkillWorker) processTask(ctx context.Context, taskKey string) {
 	w.skillRepo.Update(skill)
 
 	log.Printf("Creating skill package for skillID=%s", skillID.String())
+	w.publishStage(ctx, skillID, models.StageGenerating)
+
 	if err := w.createSkillPackage(ctx, skillID, result); err != nil {
 		log.Printf("Failed to create skill package: %v", err)
-		w.skillService.UpdateSkillStatusWithError(ctx, skillID, models.SkillStatusFailed, 90, err.Error())
+		w.skillService.UpdateSkillStageWithError(ctx, skillID, models.StageFailed, err.Error())
+		w.publishStage(ctx, skillID, models.StageFailed)
 		return
 	}
 	log.Printf("Skill package created successfully for skillID=%s", skillID.String())
 
-	if err := w.skillService.UpdateSkillStatus(ctx, skillID, models.SkillStatusCompleted, 100); err != nil {
-		log.Printf("Failed to update status: %v", err)
+	skill, err = w.skillRepo.FindByID(skillID)
+	if err != nil {
+		log.Printf("Failed to find skill: %v", err)
+		return
+	}
+	skill.Status = models.SkillStatusCompleted
+	skill.Stage = models.StageCompleted
+	if err := w.skillRepo.Update(skill); err != nil {
+		log.Printf("Failed to update skill: %v", err)
 		return
 	}
 
-	w.publishStatus(ctx, skillID, "completed", 100)
+	w.publishStage(ctx, skillID, models.StageCompleted)
 	log.Printf("Task completed: %s", taskKey)
 }
 
-func (w *SkillWorker) publishStatus(ctx context.Context, skillID uuid.UUID, status string, progress int) {
-	key := fmt.Sprintf("skill:status:%s", skillID.String())
+func (w *SkillWorker) publishStage(ctx context.Context, skillID uuid.UUID, stage models.SkillStage) {
+	channel := fmt.Sprintf("skill:stage:%s", skillID.String())
 	data := map[string]interface{}{
-		"status":     status,
-		"progress":   progress,
-		"updated_at": time.Now().Unix(),
+		"stage": int(stage),
+		"name":  stage.String(),
 	}
 	jsonData, _ := json.Marshal(data)
-	w.redisClient.Set(ctx, key, jsonData, 24*time.Hour)
+	w.redisClient.Publish(ctx, channel, jsonData)
 }
 
-func (w *SkillWorker) GetTaskStatus(ctx context.Context, skillID string) (string, int, error) {
-	key := fmt.Sprintf("skill:status:%s", skillID)
-	data, err := w.redisClient.Get(ctx, key).Result()
+func (w *SkillWorker) GetTaskStage(ctx context.Context, skillID string) (models.SkillStage, error) {
+	skill, err := w.skillRepo.FindByID(uuid.MustParse(skillID))
 	if err != nil {
-		return "", 0, err
+		return 0, err
 	}
-
-	var status map[string]interface{}
-	json.Unmarshal([]byte(data), &status)
-
-	progress := int(status["progress"].(float64))
-	return status["status"].(string), progress, nil
+	return skill.Stage, nil
 }
 
 func buildCodeContext(docs []models.Document) string {

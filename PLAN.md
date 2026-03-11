@@ -208,6 +208,92 @@ r.GET("/health", func(c *gin.Context) {
 
 ---
 
+# Plan 4: 进度条改进 (Progress Bar Improvements)
+
+## 4.1 问题分析
+
+### 当前问题
+
+| 问题 | 说明 |
+|------|------|
+| 两套存储 | Redis 和 PostgreSQL 存储进度，不同步 |
+| 硬编码进度 | 10%, 50%, 100% 缺乏依据 |
+| 百分比不准确 | 用户感知不到真正的进度 |
+
+### 当前实现
+
+- `models/skill.go`: `Progress` 字段 (int) + `Status` 字段
+- `worker/skill.go`: 硬编码 10%, 50%, 100% 更新
+- SSE 和详情页使用不同的数据源
+
+---
+
+## 4.2 改进方案
+
+### 阶段式状态设计
+
+**移除 Progress 字段，改用 Stage 字段**：
+
+| Stage | 描述 | 前端显示 |
+|-------|------|---------|
+| 1 | pending | 上传中 + 无限圆圈 |
+| 2 | extracting | 解析文件中 + 无限圆圈 |
+| 3 | analyzing | AI 分析中 + 无限圆圈 |
+| 4 | generating | 生成文档中 + 无限圆圈 |
+| 5 | completed | ✅ 已完成 |
+| 6 | failed | ✗ 失败 |
+
+### 技术改动
+
+#### 后端
+
+1. **数据库模型** (`internal/models/skill.go`)
+   - 移除 `Progress` 字段
+   - 添加 `Stage` 字段 (INT，默认 1)
+
+2. **Service 层** (`internal/service/skill.go`)
+   - 移除 `UpdateSkillStatus(ctx, id, status, progress)` 
+   - 改为 `UpdateSkillStage(ctx, id, stage)`
+
+3. **Worker 层** (`internal/worker/skill.go`)
+   - 移除 `publishStatus()` 和 Redis 进度存储
+   - 改用 Redis Pub/Sub 发布阶段变更
+   - 更新阶段时调用 `UpdateSkillStage()`
+
+4. **Handler 层** (`internal/handlers/skill.go`)
+   - SSE 改为订阅 Redis Pub/Sub
+   - 详情接口返回 Stage 而非 Progress
+
+#### 前端
+
+1. **SkillUpload.vue**
+   - 移除百分比进度条
+   - 改为阶段描述 + 无限圆圈
+
+2. **SkillDetail.vue**
+   - 移除百分比进度条
+   - 根据 Stage 显示对应阶段描述 + 圆圈
+
+3. **新增公共组件** (`web/src/components/`)
+   - `StageIndicator.vue` - 阶段指示器（圆圈 + 描述）
+
+---
+
+## 4.3 数据迁移
+
+```sql
+-- 添加 stage 字段
+ALTER TABLE skills ADD COLUMN stage INT DEFAULT 1;
+
+-- 迁移数据（可选，保留 progress 用于兼容）
+UPDATE skills SET stage = 5 WHERE status = 'completed';
+UPDATE skills SET stage = 6 WHERE status = 'failed';
+UPDATE skills SET stage = 3 WHERE progress > 0 AND status = 'processing';
+-- pending 保持 stage = 1
+```
+
+---
+
 # Implementation Order
 
 ## Phase A: Middleware 重构 (Priority: High)

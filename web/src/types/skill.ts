@@ -3,7 +3,7 @@ export interface Skill {
   name: string
   description: string
   status: string
-  progress: number
+  stage: number
   created_at: string
   updated_at: string
 }
@@ -23,6 +23,6 @@ export interface SkillDetail extends Skill {
 }
 
 export interface SkillStatus {
-  status: string
-  progress: number
+  stage: number
+  name: string
 }

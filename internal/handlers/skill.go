@@ -37,7 +37,7 @@ type SkillResponse struct {
 	Name        string        `json:"name"`
 	Description string        `json:"description"`
 	Status      string        `json:"status"`
-	Progress    int           `json:"progress"`
+	Stage       int           `json:"stage"`
 	Skill       *SkillContent `json:"skill,omitempty"`
 	CreatedAt   time.Time     `json:"created_at"`
 	UpdatedAt   time.Time     `json:"updated_at"`
@@ -104,7 +104,6 @@ func (h *SkillHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	h.worker.InitTaskStatus(output.SkillID.String())
 	h.worker.EnqueueTask(output.SkillID.String())
 
 	c.JSON(http.StatusAccepted, UploadSkillResponse{
@@ -130,7 +129,7 @@ func (h *SkillHandler) List(c *gin.Context) {
 			ID:        skill.ID,
 			Name:      skill.Name,
 			Status:    string(skill.Status),
-			Progress:  skill.Progress,
+			Stage:     int(skill.Stage),
 			CreatedAt: skill.CreatedAt,
 			UpdatedAt: skill.UpdatedAt,
 		})
@@ -173,7 +172,7 @@ func (h *SkillHandler) Get(c *gin.Context) {
 		Name:        skill.Name,
 		Description: skill.Description,
 		Status:      string(skill.Status),
-		Progress:    skill.Progress,
+		Stage:       int(skill.Stage),
 		CreatedAt:   skill.CreatedAt,
 		UpdatedAt:   skill.UpdatedAt,
 	}
@@ -221,15 +220,15 @@ func (h *SkillHandler) Delete(c *gin.Context) {
 func (h *SkillHandler) Status(c *gin.Context) {
 	idStr := c.Param("id")
 
-	status, progress, err := h.worker.GetTaskStatus(c.Request.Context(), idStr)
+	stage, err := h.worker.GetTaskStage(c.Request.Context(), idStr)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Status not found"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":   status,
-		"progress": progress,
+		"stage": int(stage),
+		"name":  stage.String(),
 	})
 }
 
@@ -248,17 +247,17 @@ func (h *SkillHandler) SSEStatus(c *gin.Context) {
 		case <-c.Request.Context().Done():
 			return
 		case <-ticker.C:
-			status, progress, err := h.worker.GetTaskStatus(c.Request.Context(), idStr)
+			stage, err := h.worker.GetTaskStage(c.Request.Context(), idStr)
 			if err != nil {
-				fmt.Fprintf(c.Writer, "data: {\"status\":\"error\",\"progress\":0}\n\n")
+				fmt.Fprintf(c.Writer, "data: {\"stage\":0,\"name\":\"error\"}\n\n")
 				c.Writer.Flush()
 				return
 			}
 
-			fmt.Fprintf(c.Writer, "data: {\"status\":\"%s\",\"progress\":%d}\n\n", status, progress)
+			fmt.Fprintf(c.Writer, "data: {\"stage\":%d,\"name\":\"%s\"}\n\n", int(stage), stage.String())
 			c.Writer.Flush()
 
-			if status == "completed" || status == "failed" {
+			if stage == models.StageCompleted || stage == models.StageFailed {
 				return
 			}
 		}

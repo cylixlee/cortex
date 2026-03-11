@@ -42,10 +42,7 @@
 
     <div v-if="uploading" class="progress-section">
       <h3>Processing Status</h3>
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: progress + '%' }"></div>
-      </div>
-      <p class="progress-text">{{ status }} - {{ progress }}%</p>
+      <StageIndicator :stage="stage" />
       <p class="progress-hint">You can check the status later in the skill list</p>
     </div>
   </div>
@@ -55,6 +52,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadSkill, subscribeSkillStatus } from '@/api/skill'
+import StageIndicator from '@/components/StageIndicator.vue'
 
 const router = useRouter()
 
@@ -63,8 +61,7 @@ const selectedFile = ref<File | null>(null)
 const isDragging = ref(false)
 const uploading = ref(false)
 const error = ref('')
-const progress = ref(0)
-const status = ref('pending')
+const stage = ref(1) // 1 = pending/uploading
 
 const fileInput = ref<HTMLInputElement | null>(null)
 
@@ -106,22 +103,17 @@ const handleUpload = async () => {
 
   error.value = ''
   uploading.value = true
-  progress.value = 0
-  status.value = 'uploading'
+  stage.value = 1
 
   try {
-    const result = await uploadSkill(name.value, selectedFile.value, (uploadProgress) => {
-      progress.value = uploadProgress
-    })
+    const result = await uploadSkill(name.value, selectedFile.value, () => {})
 
-    status.value = 'processing'
-    progress.value = 10
+    stage.value = 2
 
-    const unsubscribe = await subscribeSkillStatus(result.skill_id, (newStatus, newProgress) => {
-      status.value = newStatus
-      progress.value = newProgress
+    const unsubscribe = await subscribeSkillStatus(result.skill_id, (newStage, newName) => {
+      stage.value = newStage
 
-      if (newStatus === 'completed' || newStatus === 'failed') {
+      if (newName === 'completed' || newName === 'failed') {
         unsubscribe()
         router.push(`/skills/${result.skill_id}`)
       }

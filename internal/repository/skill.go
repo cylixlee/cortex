@@ -50,17 +50,13 @@ func (r *SkillRepository) Update(skill *models.Skill) error {
 	return r.db.Save(skill).Error
 }
 
-func (r *SkillRepository) UpdateStatus(id uuid.UUID, status models.SkillStatus, progress int) error {
-	return r.db.Model(&models.Skill{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"status":   status,
-		"progress": progress,
-	}).Error
+func (r *SkillRepository) UpdateStage(id uuid.UUID, stage models.SkillStage) error {
+	return r.db.Model(&models.Skill{}).Where("id = ?", id).Update("stage", stage).Error
 }
 
-func (r *SkillRepository) UpdateStatusWithError(id uuid.UUID, status models.SkillStatus, progress int, errMsg string) error {
+func (r *SkillRepository) UpdateStageWithError(id uuid.UUID, stage models.SkillStage, errMsg string) error {
 	return r.db.Model(&models.Skill{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"status":        status,
-		"progress":      progress,
+		"stage":         stage,
 		"error_message": errMsg,
 	}).Error
 }
