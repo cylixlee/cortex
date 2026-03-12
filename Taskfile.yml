@@ -1,12 +1,66 @@
 version: 3
 
+vars:
+  CONTAINER_ENGINE:
+    sh: |
+      if command -v docker &> /dev/null; then
+        echo "docker"
+      elif command -v podman &> /dev/null; then
+        echo "podman"
+      else
+        echo "No docker or podman found. Please edit Taskfile manually to support your container engine." 1>&2
+        exit 1
+      fi
+  CONTAINER_UP_TIMEOUT: 5
+
 tasks:
   install:
-    desc: Install dependencies for both Go and Vue, and migrate database.
+    desc: Install dependencies for both Go and Vue, and setup containers.
     cmds:
       - task: install-go
       - task: install-vue
+      - task: up
+
+  up:
+    desc: Setup containers.
+    cmds:
+      - task: start-podman
+      - "{{.CONTAINER_ENGINE}} compose up -d"
+      - task: sleep-windows:{{.CONTAINER_UP_TIMEOUT}}
+      - task: sleep-posix:{{.CONTAINER_UP_TIMEOUT}}
       - go run ./cmd/migrate
+      - go run ./cmd/miniosetup
+      - go run ./cmd/redissetup
+    silent: true
+
+  down:
+    desc: Teardown containers.
+    cmds:
+      - "{{.CONTAINER_ENGINE}} compose down -v"
+    silent: true
+
+  check:
+    desc: Perform static analysis for both Go and Vue.
+    cmds:
+      - task: check-go
+      - task: check-vue
+
+  go:
+    desc: Start Go server
+    cmds:
+      - go run ./cmd/api
+    interactive: true
+    silent: true
+    ignore_error: true
+
+  vue:
+    desc: Start Vue server
+    dir: "{{.ROOT_DIR}}/web"
+    cmds:
+      - pnpm dev
+    interactive: true
+    silent: true
+    ignore_error: true
 
   install-go:
     desc: Install Go dependencies
@@ -22,12 +76,6 @@ tasks:
     cmds:
       - pnpm install
     silent: true
-
-  check:
-    desc: Perform static analysis for both Go and Vue.
-    cmds:
-      - task: check-go
-      - task: check-vue
 
   check-go:
     desc: Perform Go static analysis
@@ -47,19 +95,36 @@ tasks:
       - pnpm -s type-check
     silent: true
 
-  go:
-    desc: Start Go server
+  sleep-windows:*:
+    desc: Sleep several seconds (Windows only)
+    internal: true
+    platforms:
+      - windows
     cmds:
-      - go run ./cmd/api
-    interactive: true
+      - powershell -Command "Start-Sleep -Seconds {{index .MATCH 0}}"
     silent: true
-    ignore_error: true
 
-  vue:
-    desc: Start Vue server
-    dir: "{{.ROOT_DIR}}/web"
+  sleep-posix:*:
+    desc: Sleep several seconds (POSIX platforms only)
+    internal: true
+    platforms:
+      - linux
+      - darwin
     cmds:
-      - pnpm dev
-    interactive: true
+      - sleep {{index .MATCH 0}}
     silent: true
-    ignore_error: true
+
+  start-podman:
+    desc: Start Podman engine because itself does not automatically start.
+    internal: true
+    preconditions:
+      - test "{{.CONTAINER_ENGINE}}" = "podman"
+    cmd: |
+      machinestate="$(podman machine info)"
+      machinestate=${machinestate##*machinestate:}
+      machinestate=${machinestate%%numberofmachines:*}
+      if [[ "$machinestate" =~ Running ]]; then
+        exit 0
+      fi
+      podman machine start
+    silent: true

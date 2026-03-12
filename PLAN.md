@@ -1,355 +1,281 @@
-# Cortex Phase 2 Implementation Plan
+# Cortex Project Implementation Plan
 
 ## Overview
 
-Phase 2 Goal: User Authentication + Conversation History Persistence
-
-This phase adds user authentication (JWT) and persists chat history to PostgreSQL, completing Phase 1's basic chat functionality and laying the foundation for Phase 3 (Knowledge Base Service).
+This document tracks the implementation plans for Cortex project improvements beyond Phase 1-4.
 
 ---
 
-## 1. Infrastructure Layer
+## Phase 1: Vector Semantic Search (RAG Enhancement)
 
-### 1.1 Configuration Update
+### Background
 
-**File**: `internal/config/config.go`
+The project currently lacks vector-based semantic search capability. When users ask questions about their uploaded code, the system cannot retrieve relevant context from the knowledge base. This feature will enable users to optionally enable "Skill Retrieval" during chat, similar to DeepSeek's "Deep Think" toggle.
 
-Add the following fields to the Config struct:
+### Architecture
+
+```
+User Message + Enable RAG Flag
+         │
+         ▼
+┌────────────────────────┐
+│  Handler Layer         │
+│  (chat.go)            │
+└────────────────────────┘
+         │
+         ▼ (if enable_rag = true)
+┌────────────────────────┐
+│  ChatService           │
+│  RetrieveContext()    │
+└────────────────────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+┌────────┐ ┌──────────────┐
+│Embed   │ │Chunk Repo    │
+│Query   │ │SearchByEmbed │
+└────────┘ └──────────────┘
+    │         │
+    └────┬────┘
+         ▼
+┌────────────────────────┐
+│  Context + Message     │
+│  → LLM                 │
+└────────────────────────┘
+```
+
+### Implementation Details
+
+#### 1. Frontend Changes
+
+**File**: `web/src/views/ChatView.vue`
+
+- Add a toggle button "Skill 检索" (Skill Retrieval) in the message input area
+- Store toggle state locally (not persisted to backend)
+- Pass `enable_rag: boolean` in chat API request
+
+**File**: `web/src/api/chat.ts` (or similar)
+
+```typescript
+interface ChatRequest {
+  message: string;
+  conversation_id?: string;
+  enable_rag?: boolean;  // New field
+}
+```
+
+#### 2. Backend Handler Changes
+
+**File**: `internal/handlers/chat.go`
 
 ```go
-type Config struct {
-    // Existing
-    ChatProvider string
-    ChatBaseURL  string
-    ChatAPIKey   string
-    ChatModel    string
-
-    // New - Database
-    DatabaseURL string  // postgres://user:pass@localhost:5432/cortex
-
-    // New - JWT Auth
-    JWTSecret       string
-    JWTExpiryHours  int
+type ChatRequest struct {
+    Message        string `json:"message" binding:"required"`
+    ConversationID string `json:"conversation_id"`
+    EnableRAG      bool   `json:"enable_rag"`  // New field
 }
 ```
 
-Also update `.env` file with new configuration variables.
+In the `Chat()` handler:
+- Check `req.EnableRAG`
+- If enabled, call `chatService.RetrieveContext()` to get relevant chunks
+- Prepend context to user message before sending to LLM
 
-### 1.2 Project Structure
+#### 3. Service Layer Changes
 
-```
-internal/
-├── domain/
-│   ├── user.go           # User domain entity
-│   ├── conversation.go   # Conversation domain entity
-│   └── message.go        # Message domain entity
-├── repository/
-│   ├── db.go             # GORM connection configuration
-│   ├── user.go           # User repository
-│   ├── conversation.go   # Conversation repository
-│   └── message.go        # Message repository
-├── service/
-│   ├── user.go           # User service
-│   └── conversation.go   # Conversation service
-├── auth/
-│   ├── claims.go         # JWT Claims definition
-│   └── token.go          # Token generation/validation
-├── handlers/
-│   ├── auth.go           # Auth Handler (new)
-│   ├── conversation.go  # Conversation Handler (new)
-│   └── chat.go           # Chat Handler (modify)
-pkg/
-└── middleware/
-    └── auth.go           # JWT middleware
+**File**: `internal/service/chat.go`
+
+Add new fields to `ChatService` struct:
+
+```go
+type ChatService struct {
+    // ... existing fields
+    embeddingClient llm.Embedder
+    chunkRepo       *repository.ChunkRepository
+}
 ```
 
-### 1.3 Database Schema
+Add new method:
 
-| Table Name      | Fields                                                                                                            |
-| --------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `users`         | id (UUID), email (VARCHAR unique), password_hash (VARCHAR), role (VARCHAR default 'user'), created_at, updated_at |
-| `conversations` | id (UUID), user_id (UUID FK), title (VARCHAR), created_at, updated_at                                             |
-| `messages`      | id (UUID), conversation_id (UUID FK), role (VARCHAR 'user'/'assistant'), content (TEXT), created_at               |
-
----
-
-## 2. Backend Modules
-
-### 2.1 User Authentication Module
-
-**New Files**:
-
-- `internal/auth/claims.go` - JWT Claims struct with UserID, Email, Role
-- `internal/auth/token.go` - Token generation and validation functions
-- `pkg/middleware/auth.go` - JWT authentication middleware
-- `internal/handlers/auth.go` - Register, Login, Refresh, Me handlers
-
-**Dependencies**:
-
-```bash
-go get github.com/golang-jwt/jwt/v5
-go get golang.org/x/crypto
-go get github.com/google/uuid
-```
-
-**API Endpoints**:
-
-| Method | Path                    | Description          | Auth |
-| ------ | ----------------------- | -------------------- | ---- |
-| POST   | `/api/v1/auth/register` | User registration    | No   |
-| POST   | `/api/v1/auth/login`    | User login           | No   |
-| POST   | `/api/v1/auth/refresh`  | Refresh access token | No   |
-| GET    | `/api/v1/auth/me`       | Get current user     | Yes  |
-
-**Request/Response Formats**:
-
-Register:
-
-```json
-// Request
-{ "email": "user@example.com", "password": "password123" }
-// Response 201
-{ "user_id": "uuid" }
-```
-
-Login:
-
-```json
-// Request
-{ "email": "user@example.com", "password": "password123" }
-// Response 200
-{ "access_token": "jwt...", "refresh_token": "jwt..." }
-```
-
-### 2.2 Conversation Management Module
-
-**New Files**:
-
-- `internal/repository/conversation.go` - Conversation CRUD operations
-- `internal/repository/message.go` - Message CRUD operations
-- `internal/service/conversation.go` - Business logic for conversations
-- `internal/handlers/conversation.go` - Conversation REST handlers
-
-**API Endpoints**:
-
-| Method | Path                        | Description                    | Auth |
-| ------ | --------------------------- | ------------------------------ | ---- |
-| GET    | `/api/v1/conversations`     | List user's conversations      | Yes  |
-| POST   | `/api/v1/conversations`     | Create new conversation        | Yes  |
-| GET    | `/api/v1/conversations/:id` | Get conversation with messages | Yes  |
-| DELETE | `/api/v1/conversations/:id` | Delete conversation            | Yes  |
-
-**Request/Response Formats**:
-
-List Conversations:
-
-```json
-// Response 200
-[
-  {
-    "id": "uuid",
-    "title": "Conversation 1",
-    "created_at": "timestamp",
-    "updated_at": "timestamp"
-  }
-]
-```
-
-Create Conversation:
-
-```json
-// Request
-{ "title": "My Conversation" }
-// Response 201
-{ "id": "uuid", "title": "My Conversation", "created_at": "timestamp" }
-```
-
-Get Conversation:
-
-```json
-// Response 200
-{
-  "id": "uuid",
-  "title": "My Conversation",
-  "messages": [
-    {
-      "id": "uuid",
-      "role": "user",
-      "content": "Hello",
-      "created_at": "timestamp"
-    },
-    {
-      "id": "uuid",
-      "role": "assistant",
-      "content": "Hi!",
-      "created_at": "timestamp"
+```go
+func (s *ChatService) RetrieveContext(ctx context.Context, query string, topK int) ([]string, error) {
+    // 1. Embed the query string
+    embeddings, err := s.embeddingClient.EmbedStrings(ctx, []string{query})
+    if err != nil {
+        return nil, err
     }
-  ]
+
+    // 2. Search chunks by embedding (search across all skills, or specific skill)
+    chunks, err := s.chunkRepo.SearchByEmbedding(embeddings[0], topK)
+    if err != nil {
+        return nil, err
+    }
+
+    // 3. Extract content
+    contexts := make([]string, len(chunks))
+    for i, chunk := range chunks {
+        contexts[i] = chunk.Content
+    }
+    return contexts, nil
 }
 ```
 
-### 2.3 Chat Endpoint Modification
+**Note**: Need to discuss search scope - should it search:
+- All chunks across all skills (global search)
+- User's own skills only
+- Specific skill (requires frontend skill selector)
 
-**Modify**: `internal/handlers/chat.go`
+#### 4. Repository Layer
 
-Changes:
+**File**: `internal/repository/chunk.go`
 
-- Add JWT authentication middleware
-- Accept optional `conversation_id` in request
-- If no conversation_id, create new conversation
-- Persist user message and assistant response to database
+The `SearchByEmbedding` method already exists but needs review:
 
-**Modified Request Format**:
-
-```json
-// Request
-{ "message": "Hello", "conversation_id": "uuid (optional)" }
-// Response: SSE stream as before
+```go
+func (r *ChunkRepository) SearchByEmbedding(embedding []float64, skillID uuid.UUID, limit int) ([]models.Chunk, error)
 ```
+
+Current implementation requires `skillID`. We may need to create an overloaded method or modify to support global search (without skillID filter).
+
+#### 5. Dependency Injection
+
+**File**: `cmd/api/main.go`
+
+Update `NewChatService()` call to include:
+- embeddingClient
+- chunkRepo
+
+#### 6. Database Schema
+
+If using global search without skillID filter, no schema changes needed.
+
+If searching by skill, may need to track user's skills or add skill selector in frontend.
+
+### Simplified Message Format
+
+Instead of using system prompt, simply prepend context to user message:
+
+```
+Based on the following context:
+
+<chunk1 content>
 
 ---
 
-## 3. Frontend Structure
+<chunk2 content>
 
-### 3.1 New Files
+---
 
-```
-web/src/
-├── api/
-│   ├── auth.ts            # login, register, refresh, me
-│   ├── conversation.ts    # list, create, get, delete
-│   └── chat.ts           # send message (modify)
-├── stores/
-│   ├── user.ts           # user state (token, user info)
-│   └── chat.ts          # chat state (modify: conversation_id)
-├── views/
-│   ├── Login.vue         # Login page
-│   ├── Register.vue     # Register page
-│   ├── ConversationList.vue # Conversation list page
-│   └── ChatView.vue     # Chat page (modify: load history)
-└── router/
-    └── index.ts          # Add auth guards
+Question: <user's original message>
 ```
 
-### 3.2 API Functions
+This approach requires no changes to Session or Client logic.
 
-**auth.ts**:
+### File Changes Summary
 
-```typescript
-interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
+| # | File | Changes |
+|---|------|---------|
+| 1 | `web/src/views/ChatView.vue` | Add RAG toggle button |
+| 2 | `web/src/api/chat.ts` | Add `enable_rag` field to request type |
+| 3 | `internal/handlers/chat.go` | Add `EnableRAG` field, implement RAG logic |
+| 4 | `internal/service/chat.go` | Add embeddingClient, chunkRepo, RetrieveContext() |
+| 5 | `internal/repository/chunk.go` | Optionally modify SearchByEmbedding for global search |
+| 6 | `cmd/api/main.go` | Update ChatService initialization |
+
+### Open Questions
+
+~~1. **Search Scope**: Should RAG search all chunks globally, or only user's own skills?~~
+~~2. **Chunk Limit**: What is a reasonable default for `topK`? (Suggested: 5)~~
+~~3. **Fallback Behavior**: If embedding service fails, should chat fail or continue without RAG?~~
+
+### Decisions Made
+
+1. **Search Scope**: Search only user's own skills (filtered by user_id)
+2. **Chunk Limit**: topK = 5 (default)
+3. **Fallback Behavior**: Graceful degradation - if embedding fails, continue chat without RAG (log error, don't block user)
+
+### Additional Implementation Details
+
+#### Repository Layer - Search Scope Implementation
+
+Since the search must be scoped to user's skills, we need to:
+
+1. First get all SkillIDs belonging to the current user
+2. Then search chunks filtered by those SkillIDs
+
+**File**: `internal/repository/chunk.go`
+
+Add a new method for user-scoped search:
+
+```go
+func (r *ChunkRepository) SearchByEmbeddingForUser(embedding []float64, userID uuid.UUID, limit int) ([]models.Chunk, error) {
+    // First get user's skill IDs
+    var skillIDs []uuid.UUID
+    r.db.Model(&models.Skill{}).Where("user_id = ?", userID).Pluck("id", &skillIDs)
+
+    if len(skillIDs) == 0 {
+        return []models.Chunk{}, nil
+    }
+
+    var chunks []models.Chunk
+    err := r.db.Where("skill_id IN ?", skillIDs).
+        Order("embedding <-> ?").
+        Limit(limit).
+        Find(&chunks, embedding).Error
+    return chunks, err
 }
-export async function login(
-  email: string,
-  password: string,
-): Promise<LoginResponse>;
-export async function register(
-  email: string,
-  password: string,
-): Promise<{ user_id: string }>;
-export async function getCurrentUser(): Promise<User>;
 ```
 
-**conversation.ts**:
-
-```typescript
-export async function listConversations(): Promise<Conversation[]>;
-export async function createConversation(title: string): Promise<Conversation>;
-export async function getConversation(
-  id: string,
-): Promise<ConversationWithMessages>;
-export async function deleteConversation(id: string): Promise<void>;
-```
-
-**chat.ts** (modify):
-
-- Add `Authorization: Bearer <token>` header
-- Add optional `conversation_id` parameter
-
-### 3.3 Router Guards
-
-Add navigation guards to protect routes:
-
-- `/chat` - requires authentication
-- `/conversations` - requires authentication
-- `/login` and `/register` - redirect to chat if already authenticated
+**Verified**: Skill model already has `user_id` field (line 70 in skill.go).
 
 ---
 
-## 4. Implementation Order
+## Phase 2: Admin Dashboard UI
 
-### Phase 2A: Database Infrastructure (Priority: High)
+### Background
 
-1. Add GORM dependency: `go get gorm.io/gorm` and `go get gorm.io/driver/postgres`
-2. Update config with DatabaseURL
-3. Create domain models (user, conversation, message)
-4. Implement repositories (user, conversation, message)
-5. Test database connection
+Currently the backend has basic admin structures but no frontend admin interface. This phase adds management capabilities for users and skills.
 
-### Phase 2B: User Authentication (Priority: High)
+### Planned Features
 
-1. Implement JWT auth module (claims.go, token.go)
-2. Create auth middleware
-3. Implement user repository and service
-4. Create auth handlers (register, login)
-5. Wire dependencies in main.go
+- User management (list, disable/enable)
+- Skill management (list, view details, delete)
+- Statistics dashboard
 
-### Phase 2C: Conversation Persistence (Priority: High)
+### Files to Create
 
-1. Implement conversation and message repositories
-2. Create conversation service
-3. Create conversation handlers
-4. Modify chat handler to persist messages
-5. Test full chat flow with persistence
+- `web/src/views/admin/Users.vue`
+- `web/src/views/admin/Skills.vue`
+- `web/src/views/admin/Dashboard.vue`
 
-### Phase 2D: Frontend Integration (Priority: Medium)
-
-1. Create Login.vue and Register.vue
-2. Add auth API functions
-3. Create user store
-4. Add router guards
-5. Create ConversationList.vue
-6. Modify ChatView.vue to load history
-7. Test end-to-end flow
+### Priority: Medium
 
 ---
 
-## 5. Technology Stack
+## Phase 3: Agent Framework Format Optimization (Phase 5)
 
-| Layer            | Technology                         |
-| ---------------- | ---------------------------------- |
-| Database         | PostgreSQL + GORM                  |
-| Auth             | JWT (github.com/golang-jwt/jwt/v5) |
-| Password Hashing | bcrypt (golang.org/x/crypto)       |
-| Frontend State   | Pinia                              |
-| Frontend Routing | Vue Router                         |
+### Background
+
+The system generates standard SKILL.md format. This phase adds support for exporting to specific agent framework formats (OpenAI GPTs, Claude, LangChain, etc.).
+
+### Planned Features
+
+- Multi-format export options
+- JSON Schema format
+- Function Calling definitions
+
+### Priority: Low
 
 ---
 
-## 6. Considerations
+## Implementation Order
 
-### Database Connection
+| Order | Phase | Priority |
+|-------|-------|----------|
+| 1 | Vector Semantic Search | High |
+| 2 | Admin Dashboard UI | Medium |
+| 3 | Agent Framework Format | Low |
 
-- Use connection pooling with appropriate MaxOpenConns and MaxIdleConns
-- Implement retry logic with exponential backoff for connection
-- Use context for all database operations
+---
 
-### Security
-
-- Always hash passwords with bcrypt (cost >= 12 for production)
-- Use environment variables for secrets (JWT_SECRET, DATABASE_URL)
-- Implement rate limiting on auth endpoints
-- Validate all input in handlers
-
-### Error Handling
-
-- Return generic error messages to clients (don't leak internal errors)
-- Log detailed errors server-side
-- Use proper HTTP status codes
-
-### Session Management
-
-- Store JWT in httpOnly cookie or localStorage (consider CSRF implications)
-- Implement token refresh mechanism
-- Consider token blacklisting for logout
+*Last Updated: 2026-03-11*

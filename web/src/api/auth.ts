@@ -1,16 +1,6 @@
-const API_BASE = 'http://localhost:8080/api/v1'
+import { getToken, setToken, clearToken, authFetch, API_BASE, fetchWithAuth } from './client'
 
-export function getToken(): string | null {
-  return localStorage.getItem('access_token')
-}
-
-function setToken(token: string) {
-  localStorage.setItem('access_token', token)
-}
-
-function clearToken() {
-  localStorage.removeItem('access_token')
-}
+export { getToken, setToken, clearToken }
 
 export interface User {
   id: string

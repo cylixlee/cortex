@@ -1,13 +1,26 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
+	"time"
 
+	"github.com/cylixlee/cortex/internal/config"
 	"github.com/cylixlee/cortex/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+var chatTimeout = 120 * time.Second
+
+func InitChatTimeout(cfg *config.Config) {
+	if cfg.ChatTimeout > 0 {
+		chatTimeout = time.Duration(cfg.ChatTimeout) * time.Second
+	}
+}
 
 type ChatHandler struct {
 	chatService *service.ChatService
@@ -22,6 +35,7 @@ func NewChatHandler(chatService *service.ChatService) *ChatHandler {
 type ChatRequest struct {
 	Message        string `json:"message" binding:"required"`
 	ConversationID string `json:"conversation_id"`
+	EnableRAG      bool   `json:"enable_rag"`
 }
 
 type SSEConversationStart struct {
@@ -54,12 +68,19 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 		return
 	}
 
+	ctx, cancel := context.WithTimeout(c.Request.Context(), chatTimeout)
+	defer cancel()
+
 	conversationID := req.ConversationID
 	var conversation *service.ConversationOutput
 	var err error
 
 	if conversationID != "" {
-		convID, _ := uuid.Parse(conversationID)
+		_, err := uuid.Parse(conversationID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid conversation ID"})
+			return
+		}
 		output, err := h.chatService.GetOrCreateConversation(userID, &conversationID)
 		if err == nil {
 			conversation = &service.ConversationOutput{
@@ -68,7 +89,6 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 				CreatedAt: output.CreatedAt.Format("2006-01-02T15:04:05Z"),
 				UpdatedAt: output.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 			}
-			_ = convID
 		}
 	}
 
@@ -92,16 +112,15 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 		return
 	}
 
-	session, err := h.chatService.GetSession(c.Request.Context(), conversation.ID)
+	session, err := h.chatService.GetSession(ctx, conversation.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get chat session"})
 		return
 	}
 
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
-	c.Header("Access-Control-Allow-Origin", "*")
 
 	flusher, ok := c.Writer.(http.Flusher)
 	if !ok {
@@ -113,8 +132,20 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 	flusher.Flush()
 
 	var assistantContent string
+	userMessage := req.Message
 
-	err = session.Send(c.Request.Context(), req.Message, func(content string, err error) bool {
+	if req.EnableRAG {
+		contexts, err := h.chatService.RetrieveContext(ctx, req.Message, userID, 5)
+		if err != nil {
+			log.Printf("RAG retrieval failed: %v", err)
+		} else if len(contexts) > 0 {
+			userMessage = "Based on the following context:\n\n" +
+				strings.Join(contexts, "\n\n---\n\n") +
+				"\n\nQuestion: " + req.Message
+		}
+	}
+
+	err = session.Send(ctx, userMessage, func(content string, err error) bool {
 		if err != nil {
 			return false
 		}

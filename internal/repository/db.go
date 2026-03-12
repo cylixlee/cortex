@@ -43,10 +43,18 @@ func InitDB(databaseURL string) error {
 }
 
 func AutoMigrate() error {
+	if err := DB.Exec("CREATE EXTENSION IF NOT EXISTS vector").Error; err != nil {
+		return err
+	}
+
 	return DB.AutoMigrate(
 		&models.User{},
 		&models.Conversation{},
 		&models.Message{},
+		&models.Skill{},
+		&models.Document{},
+		&models.Chunk{},
+		&models.Reference{},
 	)
 }
 

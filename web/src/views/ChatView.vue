@@ -9,6 +9,7 @@ const router = useRouter()
 const store = useChatStore()
 
 const input = ref('')
+const enableRag = ref(false)
 const messagesContainer = ref<HTMLElement | null>(null)
 
 const conversationId = computed(() => route.params.id as string | undefined)
@@ -21,6 +22,8 @@ const emit = defineEmits<{
 onMounted(async () => {
   if (conversationId.value) {
     await loadConversation(conversationId.value)
+  } else {
+    store.clear()
   }
 })
 
@@ -57,10 +60,15 @@ async function handleSend() {
   scrollToBottom()
 
   try {
-    const newConversationId = await sendMessage(content, conversationId.value || undefined, (chunk) => {
-      store.addAssistantMessage(chunk)
-      nextTick(() => scrollToBottom())
-    })
+    const newConversationId = await sendMessage(
+      content,
+      conversationId.value || undefined,
+      (chunk) => {
+        store.addAssistantMessage(chunk)
+        nextTick(() => scrollToBottom())
+      },
+      enableRag.value,
+    )
 
     if (newConversationId) {
       if (!conversationId.value) {
@@ -162,6 +170,13 @@ function newChat() {
       </div>
 
       <div class="input-area">
+        <div class="rag-toggle">
+          <label class="toggle-label">
+            <input type="checkbox" v-model="enableRag" />
+            <span class="toggle-switch"></span>
+            <span class="toggle-text">Skill 检索</span>
+          </label>
+        </div>
         <div class="input-container">
           <textarea
             v-model="input"
@@ -186,7 +201,7 @@ function newChat() {
 <style scoped>
 .chat-layout {
   flex: 1;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -379,6 +394,56 @@ function newChat() {
   padding: 16px 24px 24px;
   flex-shrink: 0;
   background: #fff;
+}
+
+.rag-toggle {
+  margin-bottom: 12px;
+}
+
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.toggle-label input {
+  display: none;
+}
+
+.toggle-switch {
+  width: 36px;
+  height: 20px;
+  background: #d1d5db;
+  border-radius: 10px;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+}
+
+.toggle-label input:checked + .toggle-switch {
+  background: #10a37f;
+}
+
+.toggle-label input:checked + .toggle-switch::after {
+  transform: translateX(16px);
+}
+
+.toggle-text {
+  font-weight: 500;
 }
 
 .input-container {

@@ -9,8 +9,10 @@ import (
 	"github.com/cylixlee/cortex/internal/handlers"
 	"github.com/cylixlee/cortex/internal/repository"
 	"github.com/cylixlee/cortex/internal/service"
+	"github.com/cylixlee/cortex/internal/worker"
 	"github.com/cylixlee/cortex/pkg/llm"
 	"github.com/cylixlee/cortex/pkg/middleware"
+	"github.com/cylixlee/cortex/pkg/storage"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -25,6 +27,10 @@ func main() {
 	}
 	DB = repository.DB
 
+	if err := repository.AutoMigrate(); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
+
 	llmClient, err := llm.NewClient(
 		context.Background(),
 		cfg.ChatProvider,
@@ -36,21 +42,72 @@ func main() {
 		log.Fatalf("Failed to create LLM client: %v", err)
 	}
 
+	minioClient, err := storage.NewMinIOClient(cfg)
+	if err != nil {
+		log.Fatalf("Failed to create MinIO client: %v", err)
+	}
+
+	if err := minioClient.CreateBucketIfNotExists(context.Background()); err != nil {
+		log.Fatalf("Failed to create MinIO bucket: %v", err)
+	}
+
 	userRepo := repository.NewUserRepository(DB)
 	conversationRepo := repository.NewConversationRepository(DB)
 	messageRepo := repository.NewMessageRepository(DB)
+	skillRepo := repository.NewSkillRepository(DB)
+	documentRepo := repository.NewDocumentRepository(DB)
+	chunkRepo := repository.NewChunkRepository(DB)
+	referenceRepo := repository.NewReferenceRepository(DB)
+
+	embeddingClient, err := llm.NewEmbeddingClient(
+		context.Background(),
+		cfg.EmbeddingProvider,
+		cfg.EmbeddingBaseURL,
+		cfg.EmbeddingAPIKey,
+		cfg.EmbeddingModel,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create embedding client: %v", err)
+	}
+
+	skillService := service.NewSkillService(
+		skillRepo,
+		documentRepo,
+		chunkRepo,
+		referenceRepo,
+		minioClient,
+		embeddingClient,
+	)
+
+	skillWorker, err := worker.NewSkillWorker(
+		skillRepo,
+		documentRepo,
+		chunkRepo,
+		referenceRepo,
+		minioClient,
+		llmClient,
+		cfg,
+	)
+	if err != nil {
+		log.Fatalf("Failed to create skill worker: %v", err)
+	}
+
+	go skillWorker.Start(context.Background())
 
 	userService := service.NewUserService(userRepo, cfg.JWTSecret, cfg.JWTExpiryHours)
 	conversationService := service.NewConversationService(conversationRepo, messageRepo)
-	chatService := service.NewChatService(conversationRepo, messageRepo, userRepo, llmClient)
+	chatService := service.NewChatService(conversationRepo, messageRepo, userRepo, llmClient, embeddingClient, chunkRepo)
 
 	authHandler := handlers.NewAuthHandler(userService)
 	conversationHandler := handlers.NewConversationHandler(conversationService)
 	chatHandler := handlers.NewChatHandler(chatService)
+	skillHandler := handlers.NewSkillHandler(skillService, skillWorker)
+
+	handlers.InitChatTimeout(cfg)
 
 	r := gin.Default()
 
-	r.Use(corsMiddleware())
+	r.Use(corsMiddleware(cfg))
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -92,15 +149,43 @@ func main() {
 		{
 			chat.POST("", chatHandler.Chat)
 		}
+
+		skills := v1.Group("/skills")
+		skills.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+		{
+			skills.POST("/upload", skillHandler.Upload)
+			skills.GET("", skillHandler.List)
+			skills.GET("/:id", skillHandler.Get)
+			skills.DELETE("/:id", skillHandler.Delete)
+			skills.GET("/:id/status", skillHandler.Status)
+			skills.GET("/:id/status/sse", skillHandler.SSEStatus)
+			skills.GET("/:id/download", skillHandler.Download)
+		}
 	}
 
 	log.Println("Server starting on :8080")
 	graceful.Run(r, ":8080")
 }
 
-func corsMiddleware() gin.HandlerFunc {
+func corsMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		allowedOrigin := cfg.CORSAllowedOrigins
+		if allowedOrigin == "" {
+			allowedOrigin = "*"
+		}
+
+		requestOrigin := c.Request.Header.Get("Origin")
+		if requestOrigin != "" {
+			if allowedOrigin == "*" {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+			} else {
+				c.Writer.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+				c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 

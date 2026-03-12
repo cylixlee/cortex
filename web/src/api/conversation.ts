@@ -1,6 +1,4 @@
-import { getToken } from './auth'
-
-const API_BASE = 'http://localhost:8080/api/v1'
+import { getToken, API_BASE } from './client'
 
 export interface Conversation {
   id: string
@@ -20,30 +18,23 @@ export interface ConversationWithMessages extends Conversation {
   messages: Message[]
 }
 
-async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const token = getToken()
-  if (!token) throw new Error('Not authenticated')
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
-    },
-  })
-  return response
-}
-
 export async function listConversations(): Promise<Conversation[]> {
-  const response = await fetchWithAuth(`${API_BASE}/conversations`)
+  const token = getToken()
+  const response = await fetch(`${API_BASE}/conversations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   if (!response.ok) throw new Error('Failed to list conversations')
   return response.json()
 }
 
 export async function createConversation(title: string): Promise<Conversation> {
-  const response = await fetchWithAuth(`${API_BASE}/conversations`, {
+  const token = getToken()
+  const response = await fetch(`${API_BASE}/conversations`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ title }),
   })
   if (!response.ok) throw new Error('Failed to create conversation')
@@ -51,14 +42,19 @@ export async function createConversation(title: string): Promise<Conversation> {
 }
 
 export async function getConversation(id: string): Promise<ConversationWithMessages> {
-  const response = await fetchWithAuth(`${API_BASE}/conversations/${id}`)
+  const token = getToken()
+  const response = await fetch(`${API_BASE}/conversations/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   if (!response.ok) throw new Error('Failed to get conversation')
   return response.json()
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  const response = await fetchWithAuth(`${API_BASE}/conversations/${id}`, {
+  const token = getToken()
+  const response = await fetch(`${API_BASE}/conversations/${id}`, {
     method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
   })
   if (!response.ok) throw new Error('Failed to delete conversation')
 }
@@ -67,13 +63,17 @@ export async function sendMessage(
   message: string,
   conversationId?: string,
   onChunk?: (content: string) => void,
+  enableRag?: boolean,
 ): Promise<string | undefined> {
   const token = getToken()
   if (!token) throw new Error('Not authenticated')
 
-  const body: { message: string; conversation_id?: string } = { message }
+  const body: { message: string; conversation_id?: string; enable_rag?: boolean } = { message }
   if (conversationId) {
     body.conversation_id = conversationId
+  }
+  if (enableRag) {
+    body.enable_rag = enableRag
   }
 
   const response = await fetch(`${API_BASE}/chat`, {
@@ -105,23 +105,33 @@ export async function sendMessage(
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
-        const data = line.slice(6)
-
-        if (data.startsWith('{') && data.includes('conversation_id')) {
-          try {
-            const parsed = JSON.parse(data)
-            newConversationId = parsed.conversation_id
-          } catch (e) {}
-          continue
-        }
+        const data = line.slice(6).trim()
 
         if (data === '[DONE]') {
           return newConversationId
         }
-        if (data.startsWith('[ERROR]')) {
-          throw new Error(data)
+
+        if (data.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(data)
+            if (parsed.conversation_id) {
+              newConversationId = parsed.conversation_id
+            } else if (parsed.error) {
+              throw new Error(parsed.error)
+            }
+          } catch (e) {
+            // JSON parse failed, treat as regular content
+            if (data) {
+              onChunk?.(data)
+            }
+          }
+          continue
         }
-        onChunk?.(data)
+
+        // Non-JSON content (streaming response)
+        if (data) {
+          onChunk?.(data)
+        }
       }
     }
   }

@@ -2,6 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import Login from '@/views/Login.vue'
 import ChatView from '@/views/ChatView.vue'
+import SkillList from '@/views/SkillList.vue'
+import SkillUpload from '@/views/SkillUpload.vue'
+import SkillDetail from '@/views/SkillDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +29,24 @@ const router = createRouter({
       path: '/chat/:id',
       name: 'chat-conversation',
       component: ChatView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/skills',
+      name: 'skills',
+      component: SkillList,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/skills/upload',
+      name: 'skill-upload',
+      component: SkillUpload,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/skills/:id',
+      name: 'skill-detail',
+      component: SkillDetail,
       meta: { requiresAuth: true },
     },
   ],

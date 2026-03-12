@@ -6,6 +6,10 @@
 
 Cortex is an **AI-powered source code analysis platform** that transforms any codebase into a standardized **Agent Skill** package. It serves as both an intelligent code assistant and a skill factory.
 
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+
 ### Core Workflow
 
 1. **Upload & Analyze**: User uploads a source code ZIP → triggers multi-stage Agent orchestration
@@ -15,6 +19,10 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
 3. **Dual Output**:
    - **Internal (RAG)**: Vectorized into knowledge base for contextual Q&A
    - **External (Download)**: Package as downloadable Skill for downstream Agents
+
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
 
 ## Architecture Overview
 
@@ -57,6 +65,10 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
               └─────────────────────┘
 ```
 
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+
 ## Technology Stack
 
 | Layer        | Technology                              |
@@ -68,6 +80,10 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
 | Cache        | Redis                                   |
 | File Storage | Object Storage (MinIO/S3)               |
 | Deployment   | Docker                                  |
+
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
 
 ## Core Modules
 
@@ -125,6 +141,10 @@ Multi-stage workflow:
 - Streaming support
 - Error retry logic
 
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+
 ## Data Storage
 
 | Storage        | Purpose                                     |
@@ -132,6 +152,10 @@ Multi-stage workflow:
 | PostgreSQL     | Users, conversations, messages, vector data |
 | Redis          | Session cache, rate limiting, task status   |
 | Object Storage | Source ZIP files, generated Skill packages  |
+
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
 
 ## Core Workflows
 
@@ -151,6 +175,10 @@ File Upload → Eino Multi-stage Analysis
         ├── Path A: Chunk → Embedding → Vector DB
         └── Path B: Package → Object Storage
 ```
+
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
 
 ## Project Structure
 
@@ -173,6 +201,10 @@ cortex/
 └── deployments/            # Deployment configs (Docker/K8s)
 ```
 
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+
 ## Core Features
 
 | Feature                | Description                                         |
@@ -184,6 +216,10 @@ cortex/
 | **Skill-based RAG**    | Highly structured retrieval for accurate answers    |
 | **One-click Download** | Export Skill packages as ZIP                        |
 
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+
 ## Development Phases
 
 1. **Phase 1**: Basic chat functionality (Chat + LLM integration)
@@ -191,6 +227,10 @@ cortex/
 3. **Phase 3**: Skill generation workflow (Upload → SKILL.md/refs → storage)
 4. **Phase 4**: Frontend skill details page + download functionality
 5. **Phase 5**: Optimize Skill format for主流 Agent framework compatibility
+
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
 
 ## Design Principles
 
@@ -202,6 +242,10 @@ cortex/
 - **Go Performance**: Leverage Go's concurrency for high-throughput
 - **Knowledge as a Service (KaaS)**: Provide both Q&A and reusable knowledge assets
 
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+
 ## Important Notes for Coding Agents
 
 1. **Do not implement all features at once** - follow the development phases
@@ -212,3 +256,7 @@ cortex/
 6. **PostgreSQL with pgvector** - use vector extension for semantic search
 7. **Separation of concerns** - handlers → services → repository layers
 8. **Use `task check` for validation** - you are not permitted to run any commands directly except `task check`
+
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
+> NOTE: You don't have any right to run command except `task check` defined in Taskfile in order to perform static analysis.
