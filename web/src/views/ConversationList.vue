@@ -76,250 +76,80 @@ defineExpose({
 </script>
 
 <template>
-  <div class="sidebar">
-    <div class="sidebar-header">
-      <div class="logo">Cortex</div>
-      <button class="new-chat-btn" @click="newChat">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
+  <v-navigation-drawer permanent :width="280" color="surface">
+    <div class="pa-4">
+      <div class="text-h6 text-primary font-weight-bold">Cortex</div>
+    </div>
+
+    <v-divider></v-divider>
+
+    <div class="pa-3">
+      <v-btn block color="primary" variant="tonal" prepend-icon="mdi-plus" class="mb-2" @click="newChat">
         New Chat
-      </button>
-      <button class="skills-btn" @click="goToSkills">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-        </svg>
-        My Skills
-      </button>
+      </v-btn>
+
+      <v-btn block variant="tonal" color="secondary" prepend-icon="mdi-brain" @click="goToSkills"> My Skills </v-btn>
     </div>
 
-    <div class="sidebar-content">
-      <div v-if="isLoading" class="loading">Loading...</div>
-      <div v-else-if="conversations.length === 0" class="empty">No conversations yet</div>
-      <div v-else class="conversation-list">
-        <div v-for="conv in conversations" :key="conv.id" class="conversation-item" @click="openConversation(conv.id)">
-          <div class="conv-info">
-            <span class="conv-title">{{ conv.title || 'New Chat' }}</span>
-            <span class="conv-date">{{ formatDate(conv.updated_at) }}</span>
-          </div>
-          <button class="delete-btn" @click="handleDelete(conv.id, $event)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
+    <v-divider></v-divider>
+
+    <v-list nav density="compact" class="pa-2">
+      <v-list-subheader v-if="conversations.length">Recent</v-list-subheader>
+
+      <v-list-item
+        v-for="conv in conversations"
+        :key="conv.id"
+        :active="route.params.id === conv.id"
+        @click="openConversation(conv.id)"
+        rounded="lg"
+        class="mb-1"
+      >
+        <template #prepend>
+          <v-icon icon="mdi-chat-outline"></v-icon>
+        </template>
+
+        <v-list-item-title class="text-truncate">
+          {{ conv.title || 'New Chat' }}
+        </v-list-item-title>
+
+        <v-list-item-subtitle>
+          {{ formatDate(conv.updated_at) }}
+        </v-list-item-subtitle>
+
+        <template #append>
+          <v-btn
+            icon="mdi-delete-outline"
+            variant="text"
+            size="small"
+            color="error"
+            @click.stop="handleDelete(conv.id, $event)"
+          ></v-btn>
+        </template>
+      </v-list-item>
+
+      <v-list-item v-if="!isLoading && conversations.length === 0" class="text-center">
+        <v-list-item-title class="text-grey">No conversations yet</v-list-item-title>
+      </v-list-item>
+
+      <v-list-item v-if="isLoading" class="text-center">
+        <v-progress-circular indeterminate size="24" color="primary"></v-progress-circular>
+      </v-list-item>
+    </v-list>
+
+    <template #append>
+      <v-divider></v-divider>
+
+      <div class="pa-3 d-flex align-center">
+        <v-avatar color="primary" size="36" class="mr-3">
+          <span class="text-white">{{ userStore.user?.email?.[0]?.toUpperCase() }}</span>
+        </v-avatar>
+
+        <div class="flex-grow-1 text-truncate">
+          <div class="text-body-2 text-truncate">{{ userStore.user?.email }}</div>
         </div>
-      </div>
-    </div>
 
-    <div class="sidebar-footer">
-      <div class="user-info">
-        <div class="user-avatar">{{ userStore.user?.email?.[0]?.toUpperCase() }}</div>
-        <span class="user-email">{{ userStore.user?.email }}</span>
+        <v-btn icon="mdi-logout" variant="text" size="small" @click="handleLogout"></v-btn>
       </div>
-      <button class="logout-btn" @click="handleLogout">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-          <polyline points="16 17 21 12 16 7"></polyline>
-          <line x1="21" y1="12" x2="9" y2="12"></line>
-        </svg>
-      </button>
-    </div>
-  </div>
+    </template>
+  </v-navigation-drawer>
 </template>
-
-<style scoped>
-.sidebar {
-  width: 280px;
-  height: 100vh;
-  background: #f7f7f8;
-  display: flex;
-  flex-direction: column;
-  color: #374151;
-  border-right: 1px solid #e5e5e5;
-}
-
-.sidebar-header {
-  padding: 16px;
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.logo {
-  font-size: 18px;
-  font-weight: 600;
-  color: #10a37f;
-  margin-bottom: 16px;
-  letter-spacing: -0.3px;
-}
-
-.new-chat-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  color: #374151;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.new-chat-btn:hover {
-  background: #f3f4f6;
-  border-color: #10a37f;
-  color: #10a37f;
-}
-
-.skills-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px;
-  margin-top: 8px;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  color: #374151;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.skills-btn:hover {
-  background: #f3f4f6;
-  border-color: #6366f1;
-  color: #6366f1;
-}
-
-.sidebar-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.loading,
-.empty {
-  padding: 20px;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 14px;
-}
-
-.conversation-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.conversation-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.conversation-item:hover {
-  background: #eee;
-}
-
-.conv-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow: hidden;
-}
-
-.conv-title {
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.conv-date {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.delete-btn {
-  padding: 6px;
-  background: transparent;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  border-radius: 4px;
-  opacity: 0;
-  transition:
-    opacity 0.15s,
-    color 0.15s;
-}
-
-.conversation-item:hover .delete-btn {
-  opacity: 1;
-}
-
-.delete-btn:hover {
-  color: #ef4444;
-}
-
-.sidebar-footer {
-  padding: 12px 16px;
-  border-top: 1px solid #e5e5e5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  overflow: hidden;
-}
-
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: #10a37f;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 500;
-  color: white;
-  flex-shrink: 0;
-}
-
-.user-email {
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #374151;
-}
-
-.logout-btn {
-  padding: 8px;
-  background: transparent;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: color 0.15s;
-}
-
-.logout-btn:hover {
-  color: #374151;
-}
-</style>

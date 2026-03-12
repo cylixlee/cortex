@@ -104,95 +104,95 @@ function newChat() {
 
 <template>
   <div class="chat-layout">
-    <div class="chat-main">
-      <div class="chat-header">
-        <button class="sidebar-toggle" @click="$emit('toggle-sidebar')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-          </svg>
-        </button>
-        <h1 class="chat-title">{{ store.conversationTitle }}</h1>
-        <button v-if="!conversationId" class="new-chat-btn" @click="newChat">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-        </button>
-      </div>
+    <v-app-bar flat density="comfortable" border="b">
+      <v-app-bar-nav-icon class="d-md-none" @click="$emit('toggle-sidebar')"></v-app-bar-nav-icon>
 
-      <div class="messages" ref="messagesContainer">
-        <div v-if="store.messages.length === 0 && !store.isLoading" class="empty-state">
-          <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-          </div>
-          <h2>How can I help you today?</h2>
-        </div>
+      <v-app-bar-title>
+        {{ store.conversationTitle || 'New Chat' }}
+      </v-app-bar-title>
 
-        <div v-for="msg in store.messages" :key="msg.id" :class="['message', msg.role]">
-          <div class="message-avatar">
-            <svg
-              v-if="msg.role === 'user'"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
+      <v-btn icon="mdi-plus" variant="text" @click="newChat"></v-btn>
+    </v-app-bar>
+
+    <v-main class="chat-main">
+      <v-sheet class="messages-container" color="surface">
+        <div ref="messagesContainer" class="messages-scroll">
+          <div class="messages-wrapper">
+            <div
+              v-if="store.messages.length === 0 && !store.isLoading"
+              class="empty-state d-flex flex-column align-center justify-center fill-height"
             >
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path>
-              <path d="M12 6v6l4 2"></path>
-            </svg>
+              <v-icon icon="mdi-robot" size="64" color="grey-lighten-1" class="mb-4"></v-icon>
+              <h2 class="text-h5 text-grey-darken-1">How can I help you today?</h2>
+            </div>
+
+            <div v-else>
+              <div v-for="msg in store.messages" :key="msg.id" class="message-wrapper mb-4" :class="msg.role">
+                <v-avatar
+                  :color="msg.role === 'user' ? 'primary' : 'surface'"
+                  :variant="msg.role === 'assistant' ? 'tonal' : 'flat'"
+                  size="36"
+                  class="message-avatar"
+                >
+                  <v-icon v-if="msg.role === 'user'" icon="mdi-account"></v-icon>
+                  <v-icon v-else icon="mdi-robot"></v-icon>
+                </v-avatar>
+
+                <v-card
+                  :color="msg.role === 'user' ? 'primary' : 'surface'"
+                  :class="msg.role === 'user' ? 'text-white' : ''"
+                  flat
+                  class="message-card pa-3"
+                >
+                  <div class="message-text">{{ msg.content }}</div>
+                </v-card>
+              </div>
+
+              <div v-if="store.isLoading" class="message-wrapper assistant mb-4">
+                <v-avatar color="surface" variant="tonal" size="36" class="message-avatar">
+                  <v-icon icon="mdi-robot"></v-icon>
+                </v-avatar>
+                <v-card color="surface" flat class="message-card pa-3 d-flex align-center">
+                  <v-progress-circular indeterminate size="20" width="2"></v-progress-circular>
+                </v-card>
+              </div>
+            </div>
           </div>
-          <div class="message-content">{{ msg.content }}</div>
+        </div>
+      </v-sheet>
+    </v-main>
+
+    <div class="chat-footer pa-4">
+      <div class="input-wrapper">
+        <div class="d-flex align-center mb-3">
+          <v-switch v-model="enableRag" label="Skill 检索" color="primary" density="compact" hide-details></v-switch>
         </div>
 
-        <div v-if="store.isLoading" class="message assistant loading">
-          <div class="message-avatar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path>
-              <path d="M12 6v6l4 2"></path>
-            </svg>
-          </div>
-          <div class="message-content">
-            <span class="dot"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-          </div>
-        </div>
-      </div>
+        <v-textarea
+          v-model="input"
+          @keydown="handleKeydown"
+          placeholder="Message Cortex..."
+          :disabled="store.isLoading"
+          rows="1"
+          auto-grow
+          max-rows="6"
+          hide-details
+          class="message-input"
+        >
+          <template #append-inner>
+            <v-btn
+              icon="mdi-send"
+              color="primary"
+              variant="flat"
+              :disabled="store.isLoading || !input.trim()"
+              @click="handleSend"
+            ></v-btn>
+          </template>
+        </v-textarea>
 
-      <div class="input-area">
-        <div class="rag-toggle">
-          <label class="toggle-label">
-            <input type="checkbox" v-model="enableRag" />
-            <span class="toggle-switch"></span>
-            <span class="toggle-text">Skill 检索</span>
-          </label>
+        <div class="text-center mt-2">
+          <span class="text-caption text-grey"> AI can make mistakes. Please verify important information. </span>
         </div>
-        <div class="input-container">
-          <textarea
-            v-model="input"
-            @keydown="handleKeydown"
-            placeholder="Message Cortex..."
-            :disabled="store.isLoading"
-            rows="1"
-          ></textarea>
-          <button @click="handleSend" :disabled="store.isLoading || !input.trim()" class="send-btn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-          </button>
-        </div>
-        <p class="disclaimer">AI can make mistakes. Please verify important information.</p>
       </div>
     </div>
   </div>
@@ -200,320 +200,65 @@ function newChat() {
 
 <style scoped>
 .chat-layout {
-  flex: 1;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  height: 100%;
 }
 
 .chat-main {
   flex: 1;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.messages-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+.messages-scroll {
   height: 100%;
-  max-width: 768px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.chat-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  border-bottom: 1px solid #e5e5e5;
-  background: #fafafa;
-  flex-shrink: 0;
-}
-
-.sidebar-toggle {
-  display: none;
-  padding: 8px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #374151;
-  border-radius: 6px;
-}
-
-.sidebar-toggle:hover {
-  background: #f3f4f6;
-}
-
-.chat-title {
-  flex: 1;
-  font-size: 18px;
-  font-weight: 500;
-  color: #374151;
-  margin: 0;
-}
-
-.new-chat-btn {
-  padding: 8px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: #6b7280;
-  border-radius: 6px;
-  transition: all 0.15s;
-}
-
-.new-chat-btn:hover {
-  background: #f3f4f6;
-  color: #10a37f;
-}
-
-.messages {
-  flex: 1;
-  min-height: 0;
   overflow-y: auto;
+}
+
+.messages-wrapper {
+  max-width: 768px;
+  margin: 0 auto;
   padding: 24px;
 }
 
-.empty-state {
+.message-wrapper {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  text-align: center;
-  color: #6b7280;
-}
-
-.empty-icon {
-  margin-bottom: 16px;
-  color: #9ca3af;
-}
-
-.empty-state h2 {
-  font-size: 20px;
-  font-weight: 500;
-  margin: 0;
-}
-
-.message {
-  display: flex;
+  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 24px;
-  animation: fadeIn 0.2s ease;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.message.user {
+.message-wrapper.user {
   flex-direction: row-reverse;
 }
 
 .message-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
 }
 
-.user .message-avatar {
-  background: #10a37f;
-  color: white;
+.message-card {
+  max-width: 70%;
 }
 
-.assistant .message-avatar {
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  color: #10a37f;
+.message-input :deep(.v-field__input) {
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
-.message-content {
-  padding: 14px 16px;
-  border-radius: 12px;
-  font-size: 16px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-width: calc(100% - 60px);
+.chat-footer {
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
-.user .message-content {
-  background: #10a37f;
-  color: white;
-  border-top-right-radius: 4px;
-}
-
-.assistant .message-content {
-  background: #f7f7f8;
-  color: #374151;
-  border-top-left-radius: 4px;
-}
-
-.loading .message-content {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  padding: 14px 16px;
-}
-
-.dot {
-  width: 6px;
-  height: 6px;
-  background: #9ca3af;
-  border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
-}
-
-.dot:nth-child(1) {
-  animation-delay: -0.32s;
-}
-.dot:nth-child(2) {
-  animation-delay: -0.16s;
-}
-
-@keyframes bounce {
-  0%,
-  80%,
-  100% {
-    transform: scale(0);
-  }
-  40% {
-    transform: scale(1);
-  }
-}
-
-.input-area {
-  padding: 16px 24px 24px;
-  flex-shrink: 0;
-  background: #fff;
-}
-
-.rag-toggle {
-  margin-bottom: 12px;
-}
-
-.toggle-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.toggle-label input {
-  display: none;
-}
-
-.toggle-switch {
-  width: 36px;
-  height: 20px;
-  background: #d1d5db;
-  border-radius: 10px;
-  position: relative;
-  transition: background 0.2s;
-}
-
-.toggle-switch::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: white;
-  border-radius: 50%;
-  top: 2px;
-  left: 2px;
-  transition: transform 0.2s;
-}
-
-.toggle-label input:checked + .toggle-switch {
-  background: #10a37f;
-}
-
-.toggle-label input:checked + .toggle-switch::after {
-  transform: translateX(16px);
-}
-
-.toggle-text {
-  font-weight: 500;
-}
-
-.input-container {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-}
-
-.input-container:focus-within {
-  border-color: #10a37f;
-  box-shadow: 0 2px 12px rgba(16, 163, 127, 0.1);
-}
-
-textarea {
-  flex: 1;
-  border: none;
-  resize: none;
-  font-family: inherit;
-  font-size: 16px;
-  line-height: 1.5;
-  outline: none;
-  background: transparent;
-  max-height: 200px;
-  min-height: 24px;
-}
-
-textarea::placeholder {
-  color: #9ca3af;
-}
-
-.send-btn {
-  padding: 10px;
-  background: #10a37f;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  color: white;
-  transition: background 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.send-btn:hover:not(:disabled) {
-  background: #0d8c6d;
-}
-
-.send-btn:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-}
-
-.disclaimer {
-  text-align: center;
-  font-size: 12px;
-  color: #9ca3af;
-  margin: 12px 0 0;
-}
-
-@media (max-width: 768px) {
-  .sidebar-toggle {
-    display: flex;
-  }
+.input-wrapper {
+  width: 100%;
+  max-width: 768px;
+  margin: 0 auto;
 }
 </style>

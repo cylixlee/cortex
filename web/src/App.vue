@@ -23,29 +23,19 @@ function handleRefreshConversations() {
 </script>
 
 <template>
-  <div class="app-container">
+  <v-app>
     <template v-if="userStore.isLoggedIn && route.path !== '/login' && route.path !== '/register'">
-      <ConversationList v-if="showSidebar" ref="conversationListRef" class="sidebar-area" />
-      <RouterView
-        @toggle-sidebar="toggleSidebar"
-        @refresh-conversations="handleRefreshConversations"
-        class="main-area"
-      />
+      <ConversationList v-if="showSidebar" ref="conversationListRef" />
+      <RouterView @toggle-sidebar="toggleSidebar" @refresh-conversations="handleRefreshConversations" />
     </template>
     <template v-else>
       <RouterView />
     </template>
-  </div>
+  </v-app>
 </template>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
 html,
 body {
@@ -62,31 +52,5 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #fff;
-}
-
-#app {
-  height: 100%;
-}
-
-.app-container {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-}
-
-.sidebar-area {
-  flex-shrink: 0;
-}
-
-.main-area {
-  flex: 1;
-  overflow: hidden;
-}
-
-@media (max-width: 768px) {
-  .app-container {
-    flex-direction: column;
-  }
 }
 </style>

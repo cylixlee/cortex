@@ -1,26 +1,64 @@
 <template>
-  <div class="skill-list">
-    <div class="header">
-      <h1>My Skills</h1>
-      <router-link to="/skills/upload" class="btn-primary"> Upload New Skill </router-link>
+  <v-container>
+    <div class="d-flex justify-space-between align-center mb-6">
+      <h1 class="text-h4 font-weight-bold">My Skills</h1>
+
+      <v-btn color="secondary" prepend-icon="mdi-upload" to="/skills/upload"> Upload New Skill </v-btn>
     </div>
 
-    <div v-if="loading" class="loading">Loading...</div>
-    <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else-if="skills.length === 0" class="empty">
-      <p>No skills yet. Upload your first skill to get started.</p>
+    <v-alert v-if="error" type="error" variant="tonal" closable class="mb-4" @click:close="error = ''">
+      {{ error }}
+    </v-alert>
+
+    <div v-if="loading" class="d-flex justify-center py-12">
+      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
     </div>
-    <div v-else class="skills-grid">
-      <div v-for="skill in skills" :key="skill.id" class="skill-card" @click="goToDetail(skill.id)">
-        <div class="skill-name">{{ skill.name }}</div>
-        <div class="skill-status">
-          <StageIndicator :stage="skill.stage" />
-        </div>
-        <div class="skill-date">{{ formatDate(skill.created_at) }}</div>
-        <button class="btn-delete" @click.stop="handleDelete(skill.id)">Delete</button>
-      </div>
-    </div>
-  </div>
+
+    <v-empty-state
+      v-else-if="skills.length === 0"
+      icon="mdi-brain"
+      headline="No skills yet"
+      text="Upload your first skill to get started."
+    >
+      <template #actions>
+        <v-btn color="secondary" prepend-icon="mdi-upload" to="/skills/upload"> Upload Skill </v-btn>
+      </template>
+    </v-empty-state>
+
+    <v-row v-else>
+      <v-col v-for="skill in skills" :key="skill.id" cols="12" sm="6" md="4" lg="3">
+        <v-card hover @click="goToDetail(skill.id)" class="skill-card h-100">
+          <v-card-item>
+            <template #prepend>
+              <v-avatar color="secondary" variant="tonal">
+                <v-icon icon="mdi-code-tags"></v-icon>
+              </v-avatar>
+            </template>
+
+            <v-card-title>{{ skill.name }}</v-card-title>
+
+            <v-card-subtitle>
+              {{ formatDate(skill.created_at) }}
+            </v-card-subtitle>
+          </v-card-item>
+
+          <v-card-actions>
+            <StageIndicator :stage="skill.stage" />
+
+            <v-spacer></v-spacer>
+
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              color="error"
+              size="small"
+              @click.stop="handleDelete(skill.id)"
+            ></v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script setup lang="ts">
@@ -76,128 +114,13 @@ onMounted(loadSkills)
 </script>
 
 <style scoped>
-.skill-list {
-  padding: 24px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.header h1 {
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.btn-primary {
-  background: #4f46e5;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 6px;
-  text-decoration: none;
-  font-size: 14px;
-}
-
-.btn-primary:hover {
-  background: #4338ca;
-}
-
-.loading,
-.error,
-.empty {
-  text-align: center;
-  padding: 48px;
-  color: #6b7280;
-}
-
-.error {
-  color: #ef4444;
-}
-
-.skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
 .skill-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 16px;
-  cursor: pointer;
-  transition: box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
 }
 
 .skill-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.skill-name {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.skill-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.status-badge {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-badge.processing {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-badge.completed {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.status-badge.failed {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.progress {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.skill-date {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.btn-delete {
-  margin-top: 8px;
-  background: #ef4444;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.btn-delete:hover {
-  background: #dc2626;
+  transform: translateY(-4px);
 }
 </style>

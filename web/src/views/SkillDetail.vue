@@ -1,50 +1,74 @@
 <template>
-  <div class="skill-detail">
-    <div class="header">
-      <router-link to="/skills" class="back-link">← Back to Skills</router-link>
-      <h1>{{ skill?.name || 'Skill Details' }}</h1>
+  <v-container style="max-width: 900px">
+    <v-btn variant="text" color="secondary" prepend-icon="mdi-arrow-left" to="/skills" class="mb-4">
+      Back to Skills
+    </v-btn>
+
+    <div v-if="loading" class="d-flex flex-column align-center justify-center py-12">
+      <v-progress-circular indeterminate color="primary" size="64" class="mb-4"></v-progress-circular>
+      <p class="text-grey">Loading skill...</p>
     </div>
 
-    <div v-if="loading" class="loading">
-      <div class="spinner"></div>
-      <p>Loading skill...</p>
-    </div>
-    <div v-else-if="error && !skill" class="error">{{ error }}</div>
+    <v-alert v-else-if="error && !skill" type="error" variant="tonal" closable>
+      {{ error }}
+    </v-alert>
 
     <template v-else-if="skill">
-      <div class="status-section">
+      <div class="d-flex justify-space-between align-center mb-6">
+        <h1 class="text-h4 font-weight-bold">{{ skill.name }}</h1>
+
         <StageIndicator :stage="skill.stage" />
       </div>
 
-      <div v-if="skill.stage < 5" class="processing-notice">
-        <p>Your skill is being processed. This may take a few minutes.</p>
-      </div>
-
-      <div v-else-if="skill.stage === 5 && skill.skill" class="content-section">
-        <div class="section">
-          <h2>Overview</h2>
-          <div class="markdown-content" v-html="renderMarkdown(skill.skill.overview)"></div>
-        </div>
-
-        <div v-if="skill.skill.references?.length" class="section">
-          <h2>References</h2>
-          <div v-for="ref in skill.skill.references" :key="ref.filename" class="reference-item">
-            <h3>{{ ref.filename }}</h3>
-            <div class="markdown-content" v-html="renderMarkdown(ref.content)"></div>
+      <v-card v-if="skill.stage < 5" class="pa-6 mb-6" color="surface">
+        <div class="d-flex align-center gap-3">
+          <v-progress-circular indeterminate color="primary"></v-progress-circular>
+          <div>
+            <p class="text-body-1 mb-1">Your skill is being processed.</p>
+            <p class="text-caption text-grey">This may take a few minutes.</p>
           </div>
         </div>
+      </v-card>
 
-        <div class="actions">
-          <button class="btn-download" @click="handleDownload">Download Skill Package</button>
+      <v-card v-else-if="skill.stage === 5 && skill.skill" class="pa-6">
+        <section class="mb-8">
+          <h2 class="text-h5 font-weight-bold mb-4">Overview</h2>
+          <div class="markdown-content" v-html="renderMarkdown(skill.skill.overview)"></div>
+        </section>
+
+        <section v-if="skill.skill.references?.length" class="mb-8">
+          <h2 class="text-h5 font-weight-bold mb-4">References</h2>
+
+          <v-expansion-panels variant="accordion">
+            <v-expansion-panel v-for="ref in skill.skill.references" :key="ref.filename">
+              <v-expansion-panel-title>
+                <v-icon icon="mdi-file-document-outline" class="mr-2"></v-icon>
+                {{ ref.filename }}
+              </v-expansion-panel-title>
+
+              <v-expansion-panel-text>
+                <div class="markdown-content" v-html="renderMarkdown(ref.content)"></div>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
+        </section>
+
+        <v-divider class="mb-6"></v-divider>
+
+        <div class="d-flex gap-3">
+          <v-btn color="secondary" size="large" prepend-icon="mdi-download" @click="handleDownload">
+            Download Skill Package
+          </v-btn>
         </div>
-      </div>
+      </v-card>
 
-      <div v-else-if="skill.stage === 6" class="error-section">
-        <p>Processing failed. Please try again.</p>
-        <button class="btn-retry" @click="handleDelete">Delete and Retry</button>
-      </div>
+      <v-card v-else-if="skill.stage === 6" class="pa-6 text-center" color="error">
+        <v-icon icon="mdi-alert-circle" size="48" class="mb-4"></v-icon>
+        <p class="text-h6 mb-4">Processing failed. Please try again.</p>
+        <v-btn color="white" variant="outlined" @click="handleDelete"> Delete and Retry </v-btn>
+      </v-card>
     </template>
-  </div>
+  </v-container>
 </template>
 
 <script setup lang="ts">
@@ -81,7 +105,7 @@ const loadSkill = async () => {
   try {
     skill.value = await getSkill(route.params.id as string)
 
-    if (skill.value.stage < 5) {
+    if (skill.value!.stage < 5) {
       unsubscribe = await subscribeSkillStatus(route.params.id as string, (stage, name) => {
         if (skill.value) {
           skill.value.stage = stage
@@ -142,209 +166,25 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.skill-detail {
-  padding: 24px;
-  max-width: 900px;
-  margin: 0 auto;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.header {
-  margin-bottom: 24px;
-}
-
-.back-link {
-  display: inline-block;
-  color: #6b7280;
-  text-decoration: none;
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-
-.back-link:hover {
-  color: #4f46e5;
-}
-
-h1 {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.loading,
-.error {
-  text-align: center;
-  padding: 48px;
-  color: #6b7280;
-}
-
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e5e7eb;
-  border-top-color: #4f46e5;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.mini-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #e5e7eb;
-  border-top-color: #4f46e5;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.error {
-  color: #ef4444;
-}
-
-.status-section {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.status-badge {
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-
-.status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-badge.processing {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.status-badge.completed {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.status-badge.failed {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.progress {
-  color: #6b7280;
-}
-
-.processing-notice {
-  background: #f9fafb;
-  padding: 16px;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.content-section {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 24px;
-}
-
-.section {
-  margin-bottom: 32px;
-}
-
-.section h2 {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.reference-item {
-  margin-bottom: 24px;
-}
-
-.reference-item h3 {
-  font-size: 14px;
-  font-weight: 500;
-  color: #6b7280;
-  margin-bottom: 12px;
-}
-
 .markdown-content {
-  line-height: 1.6;
-  color: #374151;
+  line-height: 1.7;
 }
 
 .markdown-content :deep(h1),
 .markdown-content :deep(h2),
 .markdown-content :deep(h3) {
-  margin-top: 24px;
-  margin-bottom: 12px;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
 }
 
 .markdown-content :deep(pre) {
-  background: #f3f4f6;
-  padding: 12px;
-  border-radius: 6px;
+  background: rgb(var(--v-theme-surface));
+  padding: 1rem;
+  border-radius: 8px;
   overflow-x: auto;
 }
 
 .markdown-content :deep(code) {
   font-family: monospace;
-  font-size: 13px;
-}
-
-.actions {
-  margin-top: 32px;
-  display: flex;
-  gap: 12px;
-}
-
-.btn-download {
-  background: #4f46e5;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.btn-download:hover {
-  background: #4338ca;
-}
-
-.error-section {
-  text-align: center;
-  padding: 24px;
-}
-
-.btn-retry {
-  background: #ef4444;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
 }
 </style>

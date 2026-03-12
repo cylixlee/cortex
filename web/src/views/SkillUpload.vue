@@ -1,51 +1,66 @@
 <template>
-  <div class="upload-page">
-    <div class="header">
-      <router-link to="/skills" class="back-link">← Back to Skills</router-link>
-      <h1>Upload New Skill</h1>
-    </div>
+  <v-container style="max-width: 600px">
+    <v-btn variant="text" color="secondary" prepend-icon="mdi-arrow-left" to="/skills" class="mb-4">
+      Back to Skills
+    </v-btn>
 
-    <div class="upload-form">
-      <div class="form-group">
-        <label>Skill Name</label>
-        <input v-model="name" type="text" placeholder="e.g., my-awesome-lib" :disabled="uploading" />
-      </div>
+    <h1 class="text-h4 font-weight-bold mb-6">Upload New Skill</h1>
 
-      <div class="form-group">
-        <label>Source Code (ZIP)</label>
-        <div
-          class="dropzone"
-          :class="{ dragging: isDragging, disabled: uploading }"
-          @dragover.prevent="isDragging = true"
-          @dragleave="isDragging = false"
-          @drop.prevent="handleDrop"
-          @click="triggerFileInput"
+    <v-card class="pa-6">
+      <v-form @submit.prevent="handleUpload">
+        <v-text-field
+          v-model="name"
+          label="Skill Name"
+          placeholder="e.g., my-awesome-lib"
+          prepend-inner-icon="mdi-tag"
+          :disabled="uploading"
+          class="mb-4"
+        />
+
+        <v-file-input
+          v-model="selectedFile"
+          label="Source Code (ZIP)"
+          accept=".zip"
+          prepend-icon="mdi-folder-zip"
+          chips
+          show-size
+          :disabled="uploading"
+          class="mb-4"
         >
-          <input ref="fileInput" type="file" accept=".zip" @change="handleFileSelect" :disabled="uploading" hidden />
-          <div v-if="!selectedFile" class="dropzone-text">
-            <p>Drag & drop a ZIP file here, or click to select</p>
-            <p class="hint">Only .zip files are supported</p>
-          </div>
-          <div v-else class="selected-file">
-            <span class="file-name">{{ selectedFile.name }}</span>
-            <span class="file-size">{{ formatFileSize(selectedFile.size) }}</span>
-          </div>
-        </div>
+          <template #selection="{ fileNames }">
+            <v-chip v-for="fileName in fileNames" :key="fileName" color="secondary" size="small">
+              {{ fileName }}
+            </v-chip>
+          </template>
+        </v-file-input>
+
+        <v-alert v-if="error" type="error" variant="tonal" closable class="mb-4" @click:close="error = ''">
+          {{ error }}
+        </v-alert>
+
+        <v-btn color="secondary" size="large" block :disabled="!canUpload" :loading="uploading" type="submit">
+          <v-icon icon="mdi-upload" class="mr-2"></v-icon>
+          Upload Skill
+        </v-btn>
+      </v-form>
+    </v-card>
+
+    <v-card v-if="uploading" class="mt-6 pa-6">
+      <h3 class="text-h6 mb-4">Processing Status</h3>
+
+      <div class="d-flex align-center gap-3">
+        <v-progress-circular
+          :indeterminate="stage < 5"
+          :model-value="stageProgress"
+          color="secondary"
+        ></v-progress-circular>
+
+        <StageIndicator :stage="stage" />
       </div>
 
-      <div v-if="error" class="error">{{ error }}</div>
-
-      <button class="btn-upload" :disabled="!canUpload || uploading" @click="handleUpload">
-        {{ uploading ? 'Uploading...' : 'Upload Skill' }}
-      </button>
-    </div>
-
-    <div v-if="uploading" class="progress-section">
-      <h3>Processing Status</h3>
-      <StageIndicator :stage="stage" />
-      <p class="progress-hint">You can check the status later in the skill list</p>
-    </div>
-  </div>
+      <p class="text-caption text-grey mt-4">You can check the status later in the skill list</p>
+    </v-card>
+  </v-container>
 </template>
 
 <script setup lang="ts">
@@ -57,56 +72,31 @@ import StageIndicator from '@/components/StageIndicator.vue'
 const router = useRouter()
 
 const name = ref('')
-const selectedFile = ref<File | null>(null)
-const isDragging = ref(false)
+const selectedFile = ref<File[] | null>(null)
 const uploading = ref(false)
 const error = ref('')
-const stage = ref(1) // 1 = pending/uploading
-
-const fileInput = ref<HTMLInputElement | null>(null)
+const stage = ref(1)
 
 const canUpload = computed(() => {
-  return name.value.trim() && selectedFile.value
+  return name.value.trim() && selectedFile.value && selectedFile.value.length > 0
 })
 
-const triggerFileInput = () => {
-  fileInput.value?.click()
-}
-
-const handleFileSelect = (e: Event) => {
-  const target = e.target as HTMLInputElement
-  if (target.files && target.files[0]) {
-    selectedFile.value = target.files[0]
-  }
-}
-
-const handleDrop = (e: DragEvent) => {
-  isDragging.value = false
-  if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
-    const file = e.dataTransfer.files[0]
-    if (file.name.endsWith('.zip')) {
-      selectedFile.value = file
-    } else {
-      error.value = 'Only ZIP files are supported'
-    }
-  }
-}
-
-const formatFileSize = (bytes: number) => {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
+const stageProgress = computed(() => {
+  return ((stage.value - 1) / 4) * 100
+})
 
 const handleUpload = async () => {
-  if (!name.value || !selectedFile.value) return
+  if (!name.value || !selectedFile.value || selectedFile.value.length === 0) return
 
   error.value = ''
   uploading.value = true
   stage.value = 1
 
+  const file = selectedFile.value[0]
+  if (!file) return
+
   try {
-    const result = await uploadSkill(name.value, selectedFile.value, () => {})
+    const result = await uploadSkill(name.value, file, () => {})
 
     stage.value = 2
 
@@ -124,176 +114,3 @@ const handleUpload = async () => {
   }
 }
 </script>
-
-<style scoped>
-.upload-page {
-  padding: 24px;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.header {
-  margin-bottom: 24px;
-}
-
-.back-link {
-  display: inline-block;
-  color: #6b7280;
-  text-decoration: none;
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-
-.back-link:hover {
-  color: #4f46e5;
-}
-
-h1 {
-  font-size: 24px;
-  font-weight: 600;
-}
-
-.upload-form {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 24px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  color: #374151;
-}
-
-.form-group input[type='text'] {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
-.form-group input[type='text']:focus {
-  outline: none;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-}
-
-.dropzone {
-  border: 2px dashed #d1d5db;
-  border-radius: 8px;
-  padding: 32px;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.dropzone:hover:not(.disabled) {
-  border-color: #4f46e5;
-}
-
-.dropzone.dragging {
-  border-color: #4f46e5;
-  background: #f5f3ff;
-}
-
-.dropzone.disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.dropzone-text p {
-  color: #6b7280;
-  margin: 0;
-}
-
-.dropzone-text .hint {
-  font-size: 12px;
-  margin-top: 4px;
-}
-
-.selected-file {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.file-name {
-  font-weight: 500;
-}
-
-.file-size {
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.error {
-  color: #ef4444;
-  margin-bottom: 16px;
-}
-
-.btn-upload {
-  width: 100%;
-  background: #4f46e5;
-  color: white;
-  border: none;
-  padding: 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.btn-upload:hover:not(:disabled) {
-  background: #4338ca;
-}
-
-.btn-upload:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.progress-section {
-  margin-top: 24px;
-  padding: 24px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
-.progress-section h3 {
-  margin: 0 0 16px;
-  font-size: 16px;
-}
-
-.progress-bar {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #4f46e5;
-  transition: width 0.3s;
-}
-
-.progress-text {
-  margin: 8px 0;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.progress-hint {
-  font-size: 12px;
-  color: #9ca3af;
-  margin: 0;
-}
-</style>

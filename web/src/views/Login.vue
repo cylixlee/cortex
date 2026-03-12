@@ -14,6 +14,13 @@ const email = ref('')
 const password = ref('')
 const error = ref('')
 const isRegister = ref(false)
+const showPassword = ref(false)
+
+const rules = {
+  required: (v: string) => !!v || 'Required',
+  email: (v: string) => /.+@.+\..+/.test(v) || 'Invalid email',
+  minLength: (v: string) => v.length >= 6 || 'Minimum 6 characters',
+}
 
 async function handleSubmit() {
   error.value = ''
@@ -33,172 +40,61 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <div class="auth-page">
-    <div class="auth-container">
-      <div class="auth-header">
-        <h1 class="logo">Cortex</h1>
-        <p class="subtitle">{{ isRegister ? 'Create your account' : 'Welcome back' }}</p>
-      </div>
+  <v-container class="fill-height" fluid>
+    <v-row justify="center" align="center">
+      <v-col cols="12" sm="8" md="6" lg="4">
+        <v-card class="pa-6" elevation="2">
+          <v-card-title class="text-center text-h4 font-weight-bold pt-4">
+            <span class="text-primary">Cortex</span>
+          </v-card-title>
 
-      <form @submit.prevent="handleSubmit" class="auth-form">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input id="email" v-model="email" type="email" placeholder="you@example.com" required autocomplete="email" />
-        </div>
+          <v-card-subtitle class="text-center">
+            {{ isRegister ? 'Create your account' : 'Welcome back' }}
+          </v-card-subtitle>
 
-        <div class="form-group">
-          <label for="password">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            placeholder="••••••••"
-            required
-            minlength="6"
-            autocomplete="current-password"
-          />
-        </div>
+          <v-card-text>
+            <v-form @submit.prevent="handleSubmit">
+              <v-text-field
+                v-model="email"
+                label="Email"
+                type="email"
+                prepend-inner-icon="mdi-email-outline"
+                :rules="[rules.required, rules.email]"
+                autocomplete="email"
+                class="mb-2"
+              />
 
-        <div v-if="error" class="error-message">{{ error }}</div>
+              <v-text-field
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                label="Password"
+                prepend-inner-icon="mdi-lock-outline"
+                :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                @click:append-inner="showPassword = !showPassword"
+                :rules="[rules.required, rules.minLength]"
+                autocomplete="current-password"
+                class="mb-2"
+              />
 
-        <button type="submit" class="submit-btn" :disabled="userStore.isLoading">
-          {{ userStore.isLoading ? 'Please wait...' : isRegister ? 'Create account' : 'Sign in' }}
-        </button>
-      </form>
+              <v-alert v-if="error" type="error" variant="tonal" class="mb-4" closable @click:close="error = ''">
+                {{ error }}
+              </v-alert>
 
-      <div class="auth-footer">
-        <button class="toggle-btn" @click="isRegister = !isRegister">
-          {{ isRegister ? 'Already have an account? Sign in' : "Don't have an account? Sign up" }}
-        </button>
-      </div>
-    </div>
-  </div>
+              <v-btn type="submit" color="primary" size="large" block :loading="userStore.isLoading">
+                {{ isRegister ? 'Create account' : 'Sign in' }}
+              </v-btn>
+            </v-form>
+          </v-card-text>
+
+          <v-card-actions class="justify-center pb-4">
+            <v-btn variant="text" color="secondary" @click="isRegister = !isRegister">
+              {{ isRegister ? 'Already have an account? Sign in' : "Don't have an account? Sign up" }}
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
-<style scoped>
-.auth-page {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  padding: 20px;
-}
-
-.auth-container {
-  width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 12px;
-  padding: 40px;
-}
-
-.auth-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.logo {
-  font-size: 32px;
-  font-weight: 600;
-  color: #10a37f;
-  margin: 0 0 8px;
-  letter-spacing: -0.5px;
-}
-
-.subtitle {
-  color: #6e6e80;
-  font-size: 15px;
-  margin: 0;
-}
-
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.form-group label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.form-group input {
-  padding: 12px 16px;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 15px;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-  background: #fff;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #10a37f;
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
-}
-
-.form-group input::placeholder {
-  color: #9ca3af;
-}
-
-.error-message {
-  padding: 12px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: #dc2626;
-  font-size: 14px;
-  text-align: center;
-}
-
-.submit-btn {
-  padding: 14px;
-  background: #10a37f;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background: #0d8c6d;
-}
-
-.submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.auth-footer {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.toggle-btn {
-  background: none;
-  border: none;
-  color: #10a37f;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 8px;
-}
-
-.toggle-btn:hover {
-  text-decoration: underline;
-}
-</style>
+<style scoped></style>
