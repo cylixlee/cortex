@@ -24,6 +24,7 @@ tasks:
   up:
     desc: Setup containers.
     cmds:
+      - task: start-podman
       - "{{.CONTAINER_ENGINE}} compose up -d"
       - task: sleep-windows:{{.CONTAINER_UP_TIMEOUT}}
       - task: sleep-posix:{{.CONTAINER_UP_TIMEOUT}}
@@ -111,4 +112,19 @@ tasks:
       - darwin
     cmds:
       - sleep {{index .MATCH 0}}
+    silent: true
+
+  start-podman:
+    desc: Start Podman engine because itself does not automatically start.
+    internal: true
+    preconditions:
+      - test "{{.CONTAINER_ENGINE}}" = "podman"
+    cmd: |
+      machinestate="$(podman machine info)"
+      machinestate=${machinestate##*machinestate:}
+      machinestate=${machinestate%%numberofmachines:*}
+      if [[ "$machinestate" =~ Running ]]; then
+        exit 0
+      fi
+      podman machine start
     silent: true
