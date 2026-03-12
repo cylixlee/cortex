@@ -22,6 +22,8 @@ const emit = defineEmits<{
 onMounted(async () => {
   if (conversationId.value) {
     await loadConversation(conversationId.value)
+  } else {
+    store.clear()
   }
 })
 
