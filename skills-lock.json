@@ -115,11 +115,6 @@
       "source": "vuejs-ai/skills",
       "sourceType": "github",
       "computedHash": "743e11d7e5eaea83aead5853200df531328036f0cb7009d70f525626292f12d2"
-    },
-    "vuetify-4": {
-      "source": "cylixlee/skills",
-      "sourceType": "github",
-      "computedHash": "966bcbe93ef9bf054aceee434a63d2c1457b5a1b0ab5571ca62c8d0264183605"
     }
   }
 }
