@@ -15,10 +15,10 @@ vars:
 
 tasks:
   install:
-    desc: Install dependencies for both Go and Vue, and setup containers.
+    desc: Install dependencies for both Go and Web, and setup containers.
     cmds:
       - task: install-go
-      - task: install-vue
+      - task: install-web
 
   up:
     desc: Setup containers.
@@ -39,10 +39,10 @@ tasks:
     silent: true
 
   check:
-    desc: Perform static analysis for both Go and Vue.
+    desc: Perform static analysis for both Go and Web.
     cmds:
       - task: check-go
-      - task: check-vue
+      - task: check-web
 
   go:
     desc: Start Go server
@@ -52,8 +52,8 @@ tasks:
     silent: true
     ignore_error: true
 
-  vue:
-    desc: Start Vue server
+  web:
+    desc: Start Web server
     dir: "{{.ROOT_DIR}}/web"
     cmds:
       - pnpm dev
@@ -68,8 +68,8 @@ tasks:
       - go get ./...
     silent: true
 
-  install-vue:
-    desc: Install Vue dependencies
+  install-web:
+    desc: Install Web dependencies
     internal: true
     dir: "{{.ROOT_DIR}}/web"
     cmds:
@@ -84,14 +84,14 @@ tasks:
       - go vet ./...
     silent: true
 
-  check-vue:
-    desc: Perform Vue static analysis
+  check-web:
+    desc: Perform Web static analysis
     internal: true
     dir: "{{.ROOT_DIR}}/web"
     cmds:
       - pnpm -s format
-      - pnpm -s lint:eslint
-      - pnpm -s type-check
+      - pnpm -s lint
+      - pnpm -s typecheck
     silent: true
 
   sleep-windows:*:
