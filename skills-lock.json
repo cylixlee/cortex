@@ -61,51 +61,6 @@
       "sourceType": "github",
       "computedHash": "2a09194e50c32b66879467ad3ad0db7c21e6c432c336edc89cbddc077617a3e0"
     },
-    "m3-web-vue": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "4010cf09dd529df3df6f1c115fcf13b590ed3053790352cc0738c91c6e877280"
-    },
-    "material-design-3-color": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "50bf357a10d1b5749b2e6ad6750c9267de9c246b22e444368300588e275013c0"
-    },
-    "material-design-3-components": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "f8e1fe43254596886681cede7a45e4e03716de4695296aecb9e5dbb1064e3be0"
-    },
-    "material-design-3-guide": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "c6dc380cef73b31d4b0a12ff4adc785ab1ee78ce6904d0a5c872d853fc7656c4"
-    },
-    "material-design-3-icons": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "d169137e7e5a0d5168c9abcc982c206da6ce20e71d553ba7b74af850e9965c2d"
-    },
-    "material-design-3-layout": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "1ce9ac8fb656dbf5f75afc6caa22adc09c31f62045048f8f9889eabb69c23472"
-    },
-    "material-design-3-motion": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "ac3d510f8c6b32b6f7c960d51090acd14d567d0073b396071836c1fbe33adf53"
-    },
-    "material-design-3-shape": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "cc5c468971391dae0bc91a28bcf5b60fcb193dccd8d5c77b06918401e9b416b7"
-    },
-    "material-design-3-typography": {
-      "source": "shelbeely/Shelbeely-Agent-skills",
-      "sourceType": "github",
-      "computedHash": "ef0f377adbea7e67774e150bb14e16d2a91e62b5e1d6fdd1df97fa61d19b7a6f"
-    },
     "pnpm": {
       "source": "antfu/skills",
       "sourceType": "github",
