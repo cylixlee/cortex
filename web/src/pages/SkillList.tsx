@@ -53,9 +53,9 @@ export default function SkillListPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl p-6">
+    <div className="h-full p-6">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Skills</h1>
+        <h1 className="text-2xl font-bold">My Skills</h1>
         <Button onClick={() => navigate("/skills/upload")}>
           <Plus className="mr-2 size-4" />
           Upload Skill

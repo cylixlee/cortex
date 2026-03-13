@@ -1,18 +1,12 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Upload, Loader2 } from "lucide-react"
+import { Loader2, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useSkillStore } from "@/stores"
 
@@ -56,8 +50,8 @@ export default function SkillUploadPage() {
 
     setUploading(true)
     try {
-      const id = await uploadSkill(name.trim(), file)
-      setSkillId(id)
+      const uploadId = await uploadSkill(name.trim(), file)
+      setSkillId(uploadId)
       toast.success("Upload started")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload failed")
@@ -91,15 +85,9 @@ export default function SkillUploadPage() {
   const isProcessing = uploading && skillId
 
   return (
-    <div className="container mx-auto max-w-md p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Skill</CardTitle>
-          <CardDescription>
-            Upload a ZIP file containing your source code
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="flex h-full items-center justify-center p-6">
+      <Card className="w-full max-w-md">
+        <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="name">Skill Name</Label>
@@ -112,7 +100,6 @@ export default function SkillUploadPage() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="file">ZIP File</Label>
               <Input
                 id="file"
                 type="file"
