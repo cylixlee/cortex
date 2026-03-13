@@ -1,10 +1,22 @@
 <script setup lang="ts">
+import { computed, toRefs } from 'vue'
 import type { Message } from '@/api/conversation'
+import { layout, spacing } from '@/plugins/vuetify'
 
-defineProps<{
-  messages: Message[]
-  isLoading: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    messages: Message[]
+    isLoading: boolean
+    maxWidth?: string
+  }>(),
+  {
+    maxWidth: layout.chatMaxWidth,
+  },
+)
+
+const { messages } = toRefs(props)
+
+const hasStreamingMessage = computed(() => messages.value.some((m: Message) => m.id === 'streaming'))
 
 defineExpose({
   scrollToBottom: () => {
@@ -30,35 +42,31 @@ defineExpose({
           </div>
 
           <div v-else class="pa-4">
-            <div v-for="msg in messages" :key="msg.id" class="message-wrapper mb-3" :class="msg.role">
-              <v-avatar
-                :color="msg.role === 'user' ? 'primary' : 'grey-lighten-3'"
-                :variant="msg.role === 'assistant' ? 'flat' : 'flat'"
-                size="36"
-                class="message-avatar flex-shrink-0"
+            <template v-for="msg in messages" :key="msg.id">
+              <div
+                v-if="msg.role === 'user'"
+                class="message-wrapper user"
+                :style="{ marginBottom: spacing.chatMessageGap }"
               >
-                <v-icon v-if="msg.role === 'user'" icon="mdi-account"></v-icon>
-                <v-icon v-else icon="mdi-robot"></v-icon>
-              </v-avatar>
+                <v-card color="primary" class="message-card pa-3" max-width="70%" elevation="0">
+                  <div class="message-text text-white">{{ msg.content }}</div>
+                </v-card>
+              </div>
+              <div v-else class="message-wrapper assistant" :style="{ marginBottom: spacing.chatMessageGap }">
+                <div class="message-text assistant-text">
+                  {{ msg.content }}
+                </div>
+              </div>
+            </template>
 
-              <v-card
-                :color="msg.role === 'user' ? 'primary' : 'grey-lighten-4'"
-                :class="msg.role === 'user' ? 'text-white' : ''"
-                flat
-                class="message-card pa-3"
-                max-width="70%"
-              >
-                <div class="message-text">{{ msg.content }}</div>
-              </v-card>
-            </div>
-
-            <div v-if="isLoading" class="message-wrapper assistant mb-3">
-              <v-avatar color="grey-lighten-3" variant="flat" size="36" class="message-avatar flex-shrink-0">
-                <v-icon icon="mdi-robot"></v-icon>
-              </v-avatar>
-              <v-card color="surface" flat class="message-card pa-3 d-flex align-center" min-width="60">
-                <v-progress-circular indeterminate size="20" width="2"></v-progress-circular>
-              </v-card>
+            <div
+              v-if="isLoading && !hasStreamingMessage"
+              class="message-wrapper assistant"
+              :style="{ marginBottom: spacing.chatMessageGap }"
+            >
+              <div class="message-text assistant-text">
+                <v-progress-circular indeterminate size="16" width="2" color="primary"></v-progress-circular>
+              </div>
             </div>
           </div>
         </div>
@@ -86,17 +94,37 @@ defineExpose({
 }
 
 .messages-wrapper {
-  max-width: 900px;
+  max-width: v-bind(maxWidth);
   margin: 0 auto;
 }
 
 .message-wrapper {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
 }
 
 .message-wrapper.user {
-  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+.message-wrapper.assistant {
+  justify-content: flex-start;
+}
+
+.message-card {
+  border-radius: 12px;
+}
+
+.message-text {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.assistant-text {
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgb(var(--v-theme-on-surface));
 }
 </style>

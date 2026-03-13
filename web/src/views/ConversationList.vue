@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
 import { listConversations, deleteConversation, type Conversation } from '@/api/conversation'
+import PrimaryButton from '@/components/common/PrimaryButton.vue'
+import SecondaryButton from '@/components/common/SecondaryButton.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -82,20 +84,9 @@ defineExpose({
     </div>
 
     <div class="pa-3">
-      <v-btn
-        block
-        color="grey-lighten-2"
-        variant="flat"
-        prepend-icon="mdi-plus"
-        class="mb-2 text-black"
-        @click="newChat"
-      >
-        New Chat
-      </v-btn>
+      <SecondaryButton block icon="mdi-plus" class="mb-2" @click="newChat"> New Chat </SecondaryButton>
 
-      <v-btn block color="primary" variant="flat" prepend-icon="mdi-brain" class="text-white" @click="goToSkills">
-        My Skills
-      </v-btn>
+      <PrimaryButton block icon="mdi-brain" @click="goToSkills"> My Skills </PrimaryButton>
     </div>
 
     <v-list nav density="compact" class="pa-2 flex-grow-1 overflow-y-auto bg-sidebar">

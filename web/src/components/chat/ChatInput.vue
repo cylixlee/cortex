@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { layout } from '@/plugins/vuetify'
 
-const props = defineProps<{
-  disabled?: boolean
-  loading?: boolean
-  modelValue?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean
+    loading?: boolean
+    modelValue?: boolean
+    maxWidth?: string
+  }>(),
+  {
+    maxWidth: layout.chatMaxWidth,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'send', content: string): void
@@ -70,10 +77,8 @@ defineExpose({
     <div class="input-wrapper w-100">
       <div class="skill-toggle mb-2">
         <v-btn
-          :color="enableRag ? 'primary' : 'surface-variant'"
-          :class="!enableRag ? 'text-black' : 'text-white'"
-          :variant="enableRag ? 'flat' : 'flat'"
-          size="default"
+          :color="enableRag ? 'primary' : 'button-secondary'"
+          variant="flat"
           rounded="pill"
           @click="enableRag = !enableRag"
         >
@@ -120,41 +125,43 @@ defineExpose({
 
 <style scoped>
 .chat-input-container {
-  border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 
 .input-wrapper {
-  max-width: 900px;
+  max-width: v-bind(maxWidth);
   margin: 0 auto;
 }
 
 .input-box {
   position: relative;
   border-radius: 24px;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.message-textarea :deep(.v-field) {
+.message-textarea :deep(.v-field),
+.message-textarea :deep(.v-field--focused) {
   border-radius: 24px;
-  padding-bottom: 40px;
+  background: rgb(var(--v-theme-surface-variant));
+  border: 2px solid rgb(var(--v-theme-surface-variant));
 }
 
-.message-textarea :deep(.v-field__field) {
-  padding-bottom: 0;
+.message-textarea :deep(.v-field--focused) {
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.message-textarea :deep(.v-field::before),
+.message-textarea :deep(.v-field::after) {
+  display: none !important;
+}
+
+.message-textarea :deep(.v-field__outline) {
+  display: none !important;
 }
 
 .message-textarea :deep(.v-field__input) {
   padding-top: 16px;
   padding-bottom: 16px;
   min-height: 56px !important;
-}
-
-.message-textarea :deep(.v-field::after) {
-  display: none;
-}
-
-.message-textarea :deep(.v-field__wrapper::before) {
-  display: none !important;
 }
 
 .send-btn-wrapper {
