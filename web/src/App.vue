@@ -25,8 +25,15 @@ function handleRefreshConversations() {
 <template>
   <v-app>
     <template v-if="userStore.isLoggedIn && route.path !== '/login' && route.path !== '/register'">
-      <ConversationList v-if="showSidebar" ref="conversationListRef" />
-      <RouterView @toggle-sidebar="toggleSidebar" @refresh-conversations="handleRefreshConversations" />
+      <v-row no-gutters class="fill-height">
+        <v-col v-if="showSidebar" cols="12" md="3" lg="2" class="conversation-sidebar fill-height bg-sidebar">
+          <ConversationList ref="conversationListRef" class="fill-height" />
+        </v-col>
+
+        <v-col cols="12" :md="showSidebar ? 9 : 12" :lg="showSidebar ? 10 : 12" class="chat-main fill-height bg-chat">
+          <RouterView @toggle-sidebar="toggleSidebar" @refresh-conversations="handleRefreshConversations" />
+        </v-col>
+      </v-row>
     </template>
     <template v-else>
       <RouterView />

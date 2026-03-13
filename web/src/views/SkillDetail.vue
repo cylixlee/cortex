@@ -1,12 +1,10 @@
 <template>
   <v-container style="max-width: 900px">
-    <v-btn variant="text" color="secondary" prepend-icon="mdi-arrow-left" to="/skills" class="mb-4">
-      Back to Skills
-    </v-btn>
+    <v-btn variant="text" prepend-icon="mdi-arrow-left" to="/skills" class="mb-4"> Back to Skills </v-btn>
 
     <div v-if="loading" class="d-flex flex-column align-center justify-center py-12">
       <v-progress-circular indeterminate color="primary" size="64" class="mb-4"></v-progress-circular>
-      <p class="text-grey">Loading skill...</p>
+      <p class="text-muted">Loading skill...</p>
     </div>
 
     <v-alert v-else-if="error && !skill" type="error" variant="tonal" closable>
@@ -25,7 +23,7 @@
           <v-progress-circular indeterminate color="primary"></v-progress-circular>
           <div>
             <p class="text-body-1 mb-1">Your skill is being processed.</p>
-            <p class="text-caption text-grey">This may take a few minutes.</p>
+            <p class="text-caption text-muted">This may take a few minutes.</p>
           </div>
         </div>
       </v-card>
@@ -56,7 +54,7 @@
         <v-divider class="mb-6"></v-divider>
 
         <div class="d-flex gap-3">
-          <v-btn color="secondary" size="large" prepend-icon="mdi-download" @click="handleDownload">
+          <v-btn variant="tonal" color="secondary" size="large" prepend-icon="mdi-download" @click="handleDownload">
             Download Skill Package
           </v-btn>
         </div>

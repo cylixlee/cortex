@@ -1,8 +1,6 @@
 <template>
   <v-container style="max-width: 600px">
-    <v-btn variant="text" color="secondary" prepend-icon="mdi-arrow-left" to="/skills" class="mb-4">
-      Back to Skills
-    </v-btn>
+    <v-btn variant="text" prepend-icon="mdi-arrow-left" to="/skills" class="mb-4"> Back to Skills </v-btn>
 
     <h1 class="text-h4 font-weight-bold mb-6">Upload New Skill</h1>
 
@@ -28,7 +26,7 @@
           class="mb-4"
         >
           <template #selection="{ fileNames }">
-            <v-chip v-for="fileName in fileNames" :key="fileName" color="secondary" size="small">
+            <v-chip v-for="fileName in fileNames" :key="fileName" variant="tonal" color="secondary" size="small">
               {{ fileName }}
             </v-chip>
           </template>
@@ -38,7 +36,15 @@
           {{ error }}
         </v-alert>
 
-        <v-btn color="secondary" size="large" block :disabled="!canUpload" :loading="uploading" type="submit">
+        <v-btn
+          variant="tonal"
+          color="secondary"
+          size="large"
+          block
+          :disabled="!canUpload"
+          :loading="uploading"
+          type="submit"
+        >
           <v-icon icon="mdi-upload" class="mr-2"></v-icon>
           Upload Skill
         </v-btn>
@@ -52,13 +58,14 @@
         <v-progress-circular
           :indeterminate="stage < 5"
           :model-value="stageProgress"
+          variant="tonal"
           color="secondary"
         ></v-progress-circular>
 
         <StageIndicator :stage="stage" />
       </div>
 
-      <p class="text-caption text-grey mt-4">You can check the status later in the skill list</p>
+      <p class="text-caption text-muted mt-4">You can check the status later in the skill list</p>
     </v-card>
   </v-container>
 </template>

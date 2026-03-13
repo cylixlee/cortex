@@ -3,7 +3,7 @@
     <div class="d-flex justify-space-between align-center mb-6">
       <h1 class="text-h4 font-weight-bold">My Skills</h1>
 
-      <v-btn color="secondary" prepend-icon="mdi-upload" to="/skills/upload"> Upload New Skill </v-btn>
+      <v-btn variant="tonal" color="secondary" prepend-icon="mdi-upload" to="/skills/upload"> Upload New Skill </v-btn>
     </div>
 
     <v-alert v-if="error" type="error" variant="tonal" closable class="mb-4" @click:close="error = ''">
@@ -21,7 +21,7 @@
       text="Upload your first skill to get started."
     >
       <template #actions>
-        <v-btn color="secondary" prepend-icon="mdi-upload" to="/skills/upload"> Upload Skill </v-btn>
+        <v-btn variant="tonal" color="secondary" prepend-icon="mdi-upload" to="/skills/upload"> Upload Skill </v-btn>
       </template>
     </v-empty-state>
 
@@ -30,7 +30,7 @@
         <v-card hover @click="goToDetail(skill.id)" class="skill-card h-100">
           <v-card-item>
             <template #prepend>
-              <v-avatar color="secondary" variant="tonal">
+              <v-avatar variant="tonal" color="secondary">
                 <v-icon icon="mdi-code-tags"></v-icon>
               </v-avatar>
             </template>

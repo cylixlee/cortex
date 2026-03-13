@@ -76,24 +76,29 @@ defineExpose({
 </script>
 
 <template>
-  <v-navigation-drawer permanent :width="280" color="surface">
+  <div class="conversation-list-container d-flex flex-column fill-height bg-sidebar">
     <div class="pa-4">
-      <div class="text-h6 text-primary font-weight-bold">Cortex</div>
+      <div class="text-h6 text-grey-darken-3 font-weight-bold">Cortex</div>
     </div>
 
-    <v-divider></v-divider>
-
     <div class="pa-3">
-      <v-btn block color="primary" variant="tonal" prepend-icon="mdi-plus" class="mb-2" @click="newChat">
+      <v-btn
+        block
+        color="grey-lighten-2"
+        variant="flat"
+        prepend-icon="mdi-plus"
+        class="mb-2 text-black"
+        @click="newChat"
+      >
         New Chat
       </v-btn>
 
-      <v-btn block variant="tonal" color="secondary" prepend-icon="mdi-brain" @click="goToSkills"> My Skills </v-btn>
+      <v-btn block color="primary" variant="flat" prepend-icon="mdi-brain" class="text-white" @click="goToSkills">
+        My Skills
+      </v-btn>
     </div>
 
-    <v-divider></v-divider>
-
-    <v-list nav density="compact" class="pa-2">
+    <v-list nav density="compact" class="pa-2 flex-grow-1 overflow-y-auto bg-sidebar">
       <v-list-subheader v-if="conversations.length">Recent</v-list-subheader>
 
       <v-list-item
@@ -105,7 +110,7 @@ defineExpose({
         class="mb-1"
       >
         <template #prepend>
-          <v-icon icon="mdi-chat-outline"></v-icon>
+          <v-icon :icon="route.params.id === conv.id ? 'mdi-chat' : 'mdi-chat-outline'"></v-icon>
         </template>
 
         <v-list-item-title class="text-truncate">
@@ -127,29 +132,31 @@ defineExpose({
         </template>
       </v-list-item>
 
-      <v-list-item v-if="!isLoading && conversations.length === 0" class="text-center">
-        <v-list-item-title class="text-grey">No conversations yet</v-list-item-title>
+      <v-list-item v-if="!isLoading && conversations.length === 0" class="text-center bg-transparent">
+        <v-list-item-title class="text-muted">No conversations yet</v-list-item-title>
       </v-list-item>
 
       <v-list-item v-if="isLoading" class="text-center">
-        <v-progress-circular indeterminate size="24" color="primary"></v-progress-circular>
+        <v-progress-circular indeterminate size="24" color="secondary"></v-progress-circular>
       </v-list-item>
     </v-list>
 
-    <template #append>
-      <v-divider></v-divider>
+    <div class="pa-3 d-flex align-center">
+      <v-avatar color="primary" size="36" class="mr-3">
+        <span class="text-white">{{ userStore.user?.email?.[0]?.toUpperCase() }}</span>
+      </v-avatar>
 
-      <div class="pa-3 d-flex align-center">
-        <v-avatar color="primary" size="36" class="mr-3">
-          <span class="text-white">{{ userStore.user?.email?.[0]?.toUpperCase() }}</span>
-        </v-avatar>
-
-        <div class="flex-grow-1 text-truncate">
-          <div class="text-body-2 text-truncate">{{ userStore.user?.email }}</div>
-        </div>
-
-        <v-btn icon="mdi-logout" variant="text" size="small" @click="handleLogout"></v-btn>
+      <div class="flex-grow-1 text-truncate">
+        <div class="text-body-2 text-truncate">{{ userStore.user?.email }}</div>
       </div>
-    </template>
-  </v-navigation-drawer>
+
+      <v-btn icon="mdi-logout" variant="text" size="small" @click="handleLogout"></v-btn>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.conversation-list-container {
+  height: 100%;
+}
+</style>
