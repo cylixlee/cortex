@@ -116,9 +116,10 @@ tasks:
   start-podman:
     desc: Start Podman engine because itself does not automatically start.
     internal: true
-    preconditions:
-      - test "{{.CONTAINER_ENGINE}}" = "podman"
     cmd: |
+      if [[ "{{.CONTAINER_ENGINE}}" != "podman" ]]; then
+        exit 0
+      fi
       machinestate="$(podman machine info)"
       machinestate=${machinestate##*machinestate:}
       machinestate=${machinestate%%numberofmachines:*}
