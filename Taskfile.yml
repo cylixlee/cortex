@@ -19,7 +19,6 @@ tasks:
     cmds:
       - task: install-go
       - task: install-vue
-      - task: up
 
   up:
     desc: Setup containers.
