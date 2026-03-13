@@ -1,0 +1,5 @@
+export { default as LoginPage } from "./Login"
+export { default as ChatPage } from "./Chat"
+export { default as SkillListPage } from "./SkillList"
+export { default as SkillUploadPage } from "./SkillUpload"
+export { default as SkillDetailPage } from "./SkillDetail"
