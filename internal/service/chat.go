@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudwego/eino/schema"
 	"github.com/cylixlee/cortex/internal/models"
 	"github.com/cylixlee/cortex/internal/repository"
 	"github.com/cylixlee/cortex/pkg/llm"
@@ -18,6 +19,7 @@ type ChatService struct {
 	sessionManager   *llm.SessionManager
 	embeddingClient  llm.Embedder
 	chunkRepo        *repository.ChunkRepository
+	client           *llm.Client
 }
 
 func NewChatService(
@@ -35,6 +37,7 @@ func NewChatService(
 		sessionManager:   llm.NewSessionManager(client),
 		embeddingClient:  embeddingClient,
 		chunkRepo:        chunkRepo,
+		client:           client,
 	}
 }
 
@@ -88,6 +91,45 @@ func (s *ChatService) GenerateTitle(userID uuid.UUID, firstMessage string) (*mod
 		title = "New Chat"
 	}
 	return s.createNewConversation(userID, title)
+}
+
+func (s *ChatService) GenerateSmartTitle(ctx context.Context, conversationID uuid.UUID, firstUserMsg, firstAssistantMsg string) (string, error) {
+	prompt := "请根据以下对话内容生成一个简短的中文标题（不超过30字）：\n\n用户：" + firstUserMsg + "\n\n助手：" + firstAssistantMsg
+
+	messages := []*schema.Message{
+		schema.SystemMessage("你是一个对话标题生成器。请根据用户和助手的对话内容生成一个简洁的中文标题，不超过30字，直接返回标题，不要有任何解释或引号。"),
+		schema.UserMessage(prompt),
+	}
+
+	resp, err := s.client.GetChatModel().Generate(ctx, messages)
+	if err != nil {
+		return "", err
+	}
+
+	title := resp.Content
+	title = strings.ToValidUTF8(title, "")
+	title = strings.ReplaceAll(title, "\n", " ")
+	title = strings.ReplaceAll(title, "\r", "")
+	title = strings.TrimSpace(title)
+	if len(title) > 30 {
+		title = title[:30]
+	}
+
+	if err := s.UpdateConversationTitle(conversationID, title); err != nil {
+		return "", err
+	}
+
+	return title, nil
+}
+
+func (s *ChatService) UpdateConversationTitle(conversationID uuid.UUID, title string) error {
+	conversation, err := s.conversationRepo.FindByID(conversationID)
+	if err != nil {
+		return err
+	}
+
+	conversation.Title = title
+	return s.conversationRepo.Update(conversation)
 }
 
 func (s *ChatService) SaveUserMessage(conversationID uuid.UUID, content string) (*models.Message, error) {

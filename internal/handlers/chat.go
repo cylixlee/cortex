@@ -162,6 +162,19 @@ func (h *ChatHandler) Chat(c *gin.Context) {
 	if assistantContent != "" {
 		h.chatService.SaveAssistantMessage(conversation.ID, assistantContent)
 		h.chatService.UpdateConversationTimestamp(conversation.ID)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		title, err := h.chatService.GenerateSmartTitle(ctx, conversation.ID, req.Message, assistantContent)
+		if err != nil {
+			log.Printf("Failed to generate smart title: %v", err)
+		} else {
+			writeSSE(c.Writer, map[string]string{
+				"conversation_id": conversation.ID.String(),
+				"title":           title,
+			})
+			flusher.Flush()
+		}
 	}
 
 	if err != nil {

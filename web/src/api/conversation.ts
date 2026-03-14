@@ -48,7 +48,8 @@ export async function sendMessage(
   message: string,
   conversationId?: string,
   onChunk?: (content: string) => void,
-  enableRag?: boolean
+  enableRag?: boolean,
+  onTitle?: (conversationId: string, title: string) => void
 ): Promise<string | undefined> {
   const token = getToken()
   if (!token) throw new Error("Not authenticated")
@@ -105,6 +106,9 @@ export async function sendMessage(
             const parsed = JSON.parse(data)
             if (parsed.conversation_id) {
               newConversationId = parsed.conversation_id
+            }
+            if (parsed.title && onTitle && parsed.conversation_id) {
+              onTitle(parsed.conversation_id, parsed.title)
             } else if (parsed.error) {
               throw new Error(parsed.error)
             }

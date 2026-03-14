@@ -36,8 +36,11 @@ export default function SkillUploadPage() {
 
   useEffect(() => {
     if (!skillId) return
-    const unsub = subscribeStatus(skillId)
-    return () => unsub()
+    let unsub: (() => void) | undefined
+    subscribeStatus(skillId).then((fn) => {
+      unsub = fn
+    })
+    return () => unsub?.()
   }, [skillId, subscribeStatus])
 
   useEffect(() => {

@@ -74,10 +74,13 @@ export const useSkillStore = create<SkillState>((set) => ({
     await skillApi.downloadSkill(id, filename)
   },
 
-  subscribeStatus: (id: string) => {
-    const unsubscribe = skillApi.subscribeSkillStatus(id, (stage, name) => {
-      set({ skillStatus: { stage, name } })
-    })
+  subscribeStatus: async (id: string) => {
+    const unsubscribe = await skillApi.subscribeSkillStatus(
+      id,
+      (stage, name) => {
+        set({ skillStatus: { stage, name } })
+      }
+    )
     return unsubscribe
   },
 

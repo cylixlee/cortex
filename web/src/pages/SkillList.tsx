@@ -63,7 +63,7 @@ export default function SkillListPage() {
           </Button>
         </div>
 
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-1">
           {isLoading ? (
             <div className="w-full space-y-4">
               {[1, 2, 3].map((i) => (
@@ -71,14 +71,14 @@ export default function SkillListPage() {
               ))}
             </div>
           ) : skills.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
+            <div className="flex h-full w-full flex-col items-center justify-center">
               <p className="mb-4 text-muted-foreground">No skills yet</p>
               <Button onClick={() => navigate("/skills/upload")}>
                 Upload your first skill
               </Button>
             </div>
           ) : (
-            <div className="w-full space-y-4">
+            <div className="w-full space-y-4 pt-4">
               {skills.map((skill) => (
                 <Card
                   key={skill.id}

@@ -15,6 +15,7 @@ interface ChatState {
     message: string,
     enableRag?: boolean
   ) => Promise<string | undefined>
+  updateConversationTitle: (id: string, title: string) => void
   clearCurrentConversation: () => void
 }
 
@@ -97,7 +98,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } else {
       const newConv: ConversationWithMessages = {
         id: "",
-        title: message.slice(0, 50),
+        title: "",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         messages: [userMessage, assistantMessage],
@@ -122,7 +123,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
             }
           })
         },
-        enableRag
+        enableRag,
+        (convId, title) => {
+          set((state) => {
+            if (!state.currentConversation) return state
+            return {
+              currentConversation: {
+                ...state.currentConversation,
+                title,
+                id: convId,
+              },
+              conversations: state.conversations.some((c) => c.id === convId)
+                ? state.conversations.map((c) =>
+                    c.id === convId ? { ...c, title } : c
+                  )
+                : [
+                    {
+                      id: convId,
+                      title,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString(),
+                    },
+                    ...state.conversations,
+                  ],
+            }
+          })
+        }
       )
       return conversationId
     } catch (error) {
@@ -135,5 +161,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearCurrentConversation: () => {
     set({ currentConversation: null })
+  },
+
+  updateConversationTitle: (id: string, title: string) => {
+    set((state) => ({
+      currentConversation:
+        state.currentConversation?.id === id
+          ? { ...state.currentConversation, title }
+          : state.currentConversation,
+      conversations: state.conversations.map((c) =>
+        c.id === id ? { ...c, title } : c
+      ),
+    }))
   },
 }))

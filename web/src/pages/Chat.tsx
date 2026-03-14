@@ -24,7 +24,28 @@ export default function ChatPage() {
 
   const [input, setInput] = useState("")
   const [enableRag, setEnableRag] = useState(false)
+  const [displayedTitle, setDisplayedTitle] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const prevTitleRef = useRef("")
+
+  useEffect(() => {
+    const newTitle = currentConversation?.title || ""
+    if (newTitle && newTitle !== prevTitleRef.current) {
+      prevTitleRef.current = newTitle
+      let index = 0
+      const animate = () => {
+        if (index < newTitle.length) {
+          setDisplayedTitle(newTitle.slice(0, index + 1))
+          index++
+          setTimeout(animate, 30)
+        }
+      }
+      animate()
+    } else if (!newTitle) {
+      prevTitleRef.current = ""
+      setDisplayedTitle("")
+    }
+  }, [currentConversation?.title])
 
   useEffect(() => {
     if (id) {
@@ -66,6 +87,11 @@ export default function ChatPage() {
       <ScrollArea className="flex-1">
         <div className="min-h-full p-4">
           <div className="flex flex-col gap-4">
+            {displayedTitle && (
+              <div className="border-b pb-2">
+                <h2 className="text-lg font-semibold">{displayedTitle}</h2>
+              </div>
+            )}
             {!currentConversation?.messages?.length && !isLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-muted-foreground">Start a conversation...</p>
