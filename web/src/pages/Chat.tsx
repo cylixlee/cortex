@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Send } from "lucide-react"
 import { toast } from "sonner"
+import { Streamdown } from "streamdown"
+import "streamdown/styles.css"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -125,10 +127,8 @@ export default function ChatPage() {
                     </Avatar>
                   </>
                 ) : (
-                  <div className="w-full">
-                    <p className="break-all whitespace-pre-wrap">
-                      {msg.content}
-                    </p>
+                  <div className="w-full whitespace-pre-wrap">
+                    <Streamdown>{msg.content}</Streamdown>
                   </div>
                 )}
               </div>
@@ -153,7 +153,7 @@ export default function ChatPage() {
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             disabled={isSending}
-            className="min-h-[80px] resize-none pr-24 pb-14"
+            className="max-h-[200px] min-h-[80px] resize-none overflow-y-auto pr-24 pb-14"
           />
           <div className="absolute bottom-2 left-2">
             <Button

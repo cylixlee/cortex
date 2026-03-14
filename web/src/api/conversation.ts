@@ -84,26 +84,37 @@ export async function sendMessage(
   if (!reader) throw new Error("No response body")
 
   const decoder = new TextDecoder()
+  let buffer = ""
   let newConversationId: string | undefined
 
   while (true) {
     const { done, value } = await reader.read()
     if (done) break
 
-    const text = decoder.decode(value)
-    const lines = text.split("\n")
+    const text = decoder.decode(value, { stream: true })
+    buffer += text
 
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = line.slice(6).trim()
+    const parts = buffer.split("\n\n")
+    buffer = parts.pop() || ""
 
-        if (data === "[DONE]") {
+    for (const part of parts) {
+      const lines = part.split("\n")
+
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i]
+        if (!l) continue
+
+        const line = l.startsWith("data: ") ? l.slice(6) : l
+        const needsNewline = !l.startsWith("data: ")
+
+        if (line === "[DONE]") {
+          buffer = ""
           return newConversationId
         }
 
-        if (data.startsWith("{")) {
+        if (line.startsWith("{")) {
           try {
-            const parsed = JSON.parse(data)
+            const parsed = JSON.parse(line)
             if (parsed.conversation_id) {
               newConversationId = parsed.conversation_id
             }
@@ -113,15 +124,15 @@ export async function sendMessage(
               throw new Error(parsed.error)
             }
           } catch {
-            if (data) {
-              onChunk?.(data)
+            if (line) {
+              onChunk?.(line)
             }
           }
           continue
         }
 
-        if (data) {
-          onChunk?.(data)
+        if (line) {
+          onChunk?.(line + (needsNewline ? "\n" : ""))
         }
       }
     }
