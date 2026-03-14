@@ -79,8 +79,8 @@ export default function MainLayout() {
             My Skills
           </Button>
         </div>
-        <ScrollArea className="flex-1">
-          <div className="flex flex-col gap-1 p-2">
+        <ScrollArea className="w-full flex-1">
+          <div className="flex w-full flex-col gap-1 p-2">
             {conversations.map((conv) => (
               <div
                 key={conv.id}
@@ -90,7 +90,7 @@ export default function MainLayout() {
                   id === conv.id && "bg-accent"
                 )}
               >
-                <span className="flex-1 truncate">{conv.title}</span>
+                <span className="truncate-sm">{conv.title}</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -122,7 +122,7 @@ export default function MainLayout() {
           </div>
         </div>
       </aside>
-      <main className="flex-1 min-h-0">
+      <main className="min-h-0 flex-1">
         <div className="relative mx-auto h-full max-w-5xl p-6">
           <Outlet />
         </div>
