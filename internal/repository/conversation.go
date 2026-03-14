@@ -40,3 +40,9 @@ func (r *ConversationRepository) Delete(id uuid.UUID) error {
 func (r *ConversationRepository) Update(conversation *models.Conversation) error {
 	return r.db.Save(conversation).Error
 }
+
+func (r *ConversationRepository) HasAssistantMessages(conversationID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.Message{}).Where("conversation_id = ? AND role = ?", conversationID, models.MessageRoleAssistant).Count(&count).Error
+	return count > 0, err
+}

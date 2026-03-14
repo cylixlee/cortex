@@ -83,15 +83,16 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="relative flex h-full flex-col">
-      <ScrollArea className="flex-1">
+    <div className="relative flex flex-col h-full min-h-0">
+      {displayedTitle && (
+        <div className="border-b px-4 py-3">
+          <h2 className="text-lg font-semibold">{displayedTitle}</h2>
+        </div>
+      )}
+
+      <ScrollArea className="flex-1 min-h-0">
         <div className="min-h-full p-4">
           <div className="flex flex-col gap-4">
-            {displayedTitle && (
-              <div className="border-b pb-2">
-                <h2 className="text-lg font-semibold">{displayedTitle}</h2>
-              </div>
-            )}
             {!currentConversation?.messages?.length && !isLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <p className="text-muted-foreground">Start a conversation...</p>
@@ -123,7 +124,7 @@ export default function ChatPage() {
                   </>
                 ) : (
                   <div className="w-full">
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    <p className="whitespace-pre-wrap break-all">{msg.content}</p>
                   </div>
                 )}
               </div>

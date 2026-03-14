@@ -122,7 +122,7 @@ export default function MainLayout() {
           </div>
         </div>
       </aside>
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 min-h-0">
         <div className="relative mx-auto h-full max-w-5xl p-6">
           <Outlet />
         </div>

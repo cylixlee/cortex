@@ -132,6 +132,10 @@ func (s *ChatService) UpdateConversationTitle(conversationID uuid.UUID, title st
 	return s.conversationRepo.Update(conversation)
 }
 
+func (s *ChatService) HasAssistantMessages(conversationID uuid.UUID) (bool, error) {
+	return s.conversationRepo.HasAssistantMessages(conversationID)
+}
+
 func (s *ChatService) SaveUserMessage(conversationID uuid.UUID, content string) (*models.Message, error) {
 	message := &models.Message{
 		ConversationID: conversationID,
