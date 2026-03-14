@@ -85,65 +85,67 @@ export default function SkillUploadPage() {
   const isProcessing = uploading && skillId
 
   return (
-    <div className="flex h-full items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="name">Skill Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="my-awesome-skill"
-                disabled={isProcessing}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Input
-                id="file"
-                type="file"
-                accept=".zip"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                disabled={isProcessing}
-              />
-            </div>
-
-            {isProcessing && (
-              <div className="flex flex-col gap-2 rounded-md bg-muted p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span>Processing...</span>
-                  <span className="text-muted-foreground">
-                    {currentStatus
-                      ? stageNames[currentStatus.stage]
-                      : "Initializing"}
-                  </span>
-                </div>
-                <Progress
-                  value={currentStatus?.name === "completed" ? 100 : 50}
+    <div className="h-full w-full">
+      <div className="flex h-full items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="name">Skill Name</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="my-awesome-skill"
+                  disabled={isProcessing}
                 />
               </div>
-            )}
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="file"
+                  type="file"
+                  accept=".zip"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  disabled={isProcessing}
+                />
+              </div>
 
-            <Button
-              type="submit"
-              disabled={!name.trim() || !file || isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 size-4" />
-                  Upload
-                </>
+              {isProcessing && (
+                <div className="flex flex-col gap-2 rounded-md bg-muted p-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Processing...</span>
+                    <span className="text-muted-foreground">
+                      {currentStatus
+                        ? stageNames[currentStatus.stage]
+                        : "Initializing"}
+                    </span>
+                  </div>
+                  <Progress
+                    value={currentStatus?.name === "completed" ? 100 : 50}
+                  />
+                </div>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+
+              <Button
+                type="submit"
+                disabled={!name.trim() || !file || isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 size-4" />
+                    Upload
+                  </>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

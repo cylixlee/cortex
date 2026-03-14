@@ -51,7 +51,7 @@ export default function SkillDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto max-w-4xl p-6">
+      <div>
         <Skeleton className="mb-6 h-8 w-32" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -60,14 +60,14 @@ export default function SkillDetailPage() {
 
   if (!currentSkill) {
     return (
-      <div className="container mx-auto max-w-4xl p-6">
+      <div>
         <p>Skill not found</p>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto max-w-4xl p-6">
+    <div>
       <div className="mb-6 flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => navigate("/skills")}>
           <ArrowLeft className="size-4" />

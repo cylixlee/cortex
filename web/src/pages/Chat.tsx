@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Send, Loader2 } from "lucide-react"
+import { Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -62,13 +62,13 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <ScrollArea className="flex-1">
-        <div className="mx-auto max-w-3xl p-4">
+        <div className="min-h-full p-4">
           <div className="flex flex-col gap-4">
             {!currentConversation?.messages?.length && !isLoading && (
-              <div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">
-                <p>Start a conversation...</p>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <p className="text-muted-foreground">Start a conversation...</p>
               </div>
             )}
             {currentConversation?.messages?.map((msg) => (
@@ -79,41 +79,34 @@ export default function ChatPage() {
                   msg.role === "user" ? "justify-end" : "justify-start"
                 )}
               >
-                {msg.role === "assistant" && (
-                  <Avatar className="size-8">
-                    <AvatarFallback>AI</AvatarFallback>
-                  </Avatar>
-                )}
-                <div
-                  className={cn(
-                    "max-w-[70%] rounded-lg px-4 py-2",
-                    msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                  )}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                </div>
-                {msg.role === "user" && (
-                  <Avatar className="size-8">
-                    <AvatarFallback>
-                      {user?.email?.[0]?.toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                {msg.role === "user" ? (
+                  <>
+                    <div
+                      className={cn(
+                        "max-w-[70%] rounded-lg px-4 py-2",
+                        "bg-primary text-primary-foreground"
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                    <Avatar className="size-8">
+                      <AvatarFallback>
+                        {user?.email?.[0]?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </>
+                ) : (
+                  <div className="w-full">
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                  </div>
                 )}
               </div>
             ))}
             {isSending && (
-              <div className="flex gap-3">
-                <Avatar className="size-8">
-                  <AvatarFallback>AI</AvatarFallback>
-                </Avatar>
-                <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2">
-                  <Loader2 className="size-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">
-                    Thinking...
-                  </span>
-                </div>
+              <div className="w-full">
+                <span className="text-sm text-muted-foreground">
+                  Thinking...
+                </span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -122,34 +115,29 @@ export default function ChatPage() {
       </ScrollArea>
 
       <div className="p-4">
-        <div className="mx-auto max-w-3xl">
-          <div className="relative">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
+        <div className="relative">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message..."
+            disabled={isSending}
+            className="min-h-[80px] resize-none pr-24 pb-14"
+          />
+          <div className="absolute bottom-2 left-2">
+            <Button
+              variant={enableRag ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEnableRag(!enableRag)}
               disabled={isSending}
-              className="min-h-[80px] resize-none pr-24 pb-14"
-            />
-            <div className="absolute bottom-2 left-2">
-              <Button
-                variant={enableRag ? "default" : "outline"}
-                size="sm"
-                onClick={() => setEnableRag(!enableRag)}
-                disabled={isSending}
-              >
-                Skill RAG
-              </Button>
-            </div>
-            <div className="absolute right-2 bottom-2">
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim() || isSending}
-              >
-                <Send className="size-4" />
-              </Button>
-            </div>
+            >
+              Skill RAG
+            </Button>
+          </div>
+          <div className="absolute right-2 bottom-2">
+            <Button onClick={handleSend} disabled={!input.trim() || isSending}>
+              <Send className="size-4" />
+            </Button>
           </div>
         </div>
       </div>

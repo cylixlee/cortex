@@ -123,7 +123,9 @@ export default function MainLayout() {
         </div>
       </aside>
       <main className="flex-1 overflow-hidden">
-        <Outlet />
+        <div className="relative mx-auto h-full max-w-5xl p-6">
+          <Outlet />
+        </div>
       </main>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
