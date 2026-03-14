@@ -20,7 +20,7 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                   Frontend (Vue)                    │
+│              Frontend (React + shadcn/ui)           │
 │        Chat UI | Upload | Skill Details | Download  │
 └─────────────────────────────────────────────────────┘
                           │ HTTP/SSE
@@ -59,22 +59,27 @@ Cortex is an **AI-powered source code analysis platform** that transforms any co
 
 ## Technology Stack
 
-| Layer        | Technology                           |
-| ------------ | ------------------------------------ |
-| Frontend     | Vue 3 + TypeScript + Vuetify 4 + SSE |
-| Backend      | Go + Gin                             |
-| AI Framework | **Eino** (Workflow Orchestration)    |
-| Database     | PostgreSQL + pgvector                |
-| Cache        | Redis                                |
-| File Storage | MinIO (S3-compatible)                |
-| Deployment   | Docker                               |
+| Layer        | Technology                                         |
+| ------------ | -------------------------------------------------- |
+| Frontend     | React 19 + TypeScript + shadcn/ui + Tailwind CSS 4 |
+| Backend      | Go + Gin                                           |
+| AI Framework | **Eino** (Workflow Orchestration)                  |
+| Database     | PostgreSQL + pgvector                              |
+| Cache        | Redis                                              |
+| File Storage | MinIO (S3-compatible)                              |
+| Deployment   | Docker                                             |
 
 ## Core Modules
 
 ### 1. Frontend
 
+- React 19 with TypeScript
+- **shadcn/ui** component library (radix-maia style)
+- Tailwind CSS 4 for styling
+- Zustand for state management
+- React Router 7 for routing
 - Chat interface with Markdown rendering and code highlighting
-- Project upload with progress tracking
+- Project upload with progress tracking (SSE)
 - Skill report detail page (`SKILL.md` + `references/`)
 - One-click Skill package download (ZIP)
 - SSE streaming response display
@@ -135,7 +140,7 @@ cortex/
 ├── pkg/                    # Shared packages
 │   ├── llm/                # LLM client wrapper (Eino)
 │   └── storage/            # File storage utilities
-└── web/                    # Frontend (Vue)
+└── web/                    # Frontend (React + shadcn/ui)
 ```
 
 ## Core Features
