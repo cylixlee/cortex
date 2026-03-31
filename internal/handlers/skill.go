@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -179,7 +180,7 @@ func (h *SkillHandler) Get(c *gin.Context) {
 
 	if skill.Status == models.SkillStatusCompleted {
 		response.Skill = &SkillContent{
-			Overview:   skill.Description,
+			Overview:   skill.Overview,
 			References: refs,
 		}
 	}
@@ -239,26 +240,38 @@ func (h *SkillHandler) SSEStatus(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
 
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
+	pubsub := h.worker.SubscribeSkillStage(c.Request.Context(), idStr)
+	defer pubsub.Close()
+
+	ch := pubsub.Channel()
+
+	initialStage, err := h.worker.GetTaskStage(c.Request.Context(), idStr)
+	if err == nil {
+		fmt.Fprintf(c.Writer, "data: {\"stage\":%d,\"name\":\"%s\"}\n\n", int(initialStage), initialStage.String())
+		c.Writer.Flush()
+
+		if initialStage == models.StageCompleted || initialStage == models.StageFailed {
+			return
+		}
+	}
 
 	for {
 		select {
 		case <-c.Request.Context().Done():
 			return
-		case <-ticker.C:
-			stage, err := h.worker.GetTaskStage(c.Request.Context(), idStr)
-			if err != nil {
-				fmt.Fprintf(c.Writer, "data: {\"stage\":0,\"name\":\"error\"}\n\n")
-				c.Writer.Flush()
+		case msg, ok := <-ch:
+			if !ok {
 				return
 			}
-
-			fmt.Fprintf(c.Writer, "data: {\"stage\":%d,\"name\":\"%s\"}\n\n", int(stage), stage.String())
+			fmt.Fprintf(c.Writer, "data: %s\n\n", msg.Payload)
 			c.Writer.Flush()
 
-			if stage == models.StageCompleted || stage == models.StageFailed {
-				return
+			var data map[string]interface{}
+			if err := json.Unmarshal([]byte(msg.Payload), &data); err == nil {
+				stageInt, ok := data["stage"].(float64)
+				if ok && (models.SkillStage(stageInt) == models.StageCompleted || models.SkillStage(stageInt) == models.StageFailed) {
+					return
+				}
 			}
 		}
 	}

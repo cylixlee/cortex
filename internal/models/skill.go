@@ -70,6 +70,7 @@ type Skill struct {
 	UserID       uuid.UUID      `gorm:"type:uuid;not null;index" json:"user_id"`
 	Name         string         `gorm:"type:varchar(255);not null" json:"name"`
 	Description  string         `gorm:"type:text" json:"description"`
+	Overview     string         `gorm:"type:text" json:"overview"`
 	Status       SkillStatus    `gorm:"type:varchar(20);default:pending" json:"status"`
 	Stage        SkillStage     `gorm:"type:int;default:1" json:"stage"`
 	StoragePath  string         `gorm:"type:varchar(512)" json:"storage_path"`

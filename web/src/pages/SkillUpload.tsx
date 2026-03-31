@@ -11,7 +11,7 @@ import { useSkillStore } from "@/stores"
 
 export default function SkillUploadPage() {
   const navigate = useNavigate()
-  const { uploadSkill, loadSkills } = useSkillStore()
+  const { uploadSkill, loadSkills, subscribeStatus, skillStatus } = useSkillStore()
 
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -35,25 +35,30 @@ export default function SkillUploadPage() {
 
   useEffect(() => {
     if (!uploading || !skillId) return
-    const checkInterval = setInterval(async () => {
-      const { useSkillStore: store } = await import("@/stores")
-      const status = store.getState().skillStatus
-      if (status) {
-        if (status.name === "completed" || status.name === "failed") {
-          setUploading(false)
-          clearInterval(checkInterval)
-          if (status.name === "completed") {
-            toast.success("Skill processed successfully")
-            loadSkills()
-            navigate("/skills")
-          } else {
-            toast.error("Skill processing failed")
-          }
-        }
-      }
-    }, 2000)
-    return () => clearInterval(checkInterval)
-  }, [uploading, skillId, loadSkills, navigate])
+
+    let unsubscribe: (() => void) | undefined
+    const setupSubscription = async () => {
+      unsubscribe = await subscribeStatus(skillId)
+    }
+    setupSubscription()
+
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
+  }, [uploading, skillId, subscribeStatus])
+
+  useEffect(() => {
+    if (!uploading) return
+    if (skillStatus?.name === "completed") {
+      setUploading(false)
+      toast.success("Skill processed successfully")
+      loadSkills()
+      navigate("/skills")
+    } else if (skillStatus?.name === "failed") {
+      setUploading(false)
+      toast.error("Skill processing failed")
+    }
+  }, [skillStatus, uploading, loadSkills, navigate])
 
   const isProcessing = uploading && skillId
 

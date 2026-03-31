@@ -3,7 +3,6 @@ package workflows
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/cloudwego/eino/adk"
 	"github.com/cloudwego/eino/components/model"
@@ -11,7 +10,10 @@ import (
 )
 
 type SkillWorkflow struct {
-	workflow adk.Agent
+	workflow          adk.Agent
+	overviewAgent     adk.Agent
+	apiRetrievalAgent adk.Agent
+	summaryAgent      adk.Agent
 }
 
 func NewSkillWorkflow(chatModel model.ToolCallingChatModel) (*SkillWorkflow, error) {
@@ -37,6 +39,16 @@ func NewSkillWorkflow(chatModel model.ToolCallingChatModel) (*SkillWorkflow, err
 		return nil, fmt.Errorf("failed to create api retrieval agent: %w", err)
 	}
 
+	summaryAgent, err := adk.NewChatModelAgent(ctx, &adk.ChatModelAgentConfig{
+		Name:        "summary_agent",
+		Description: "Generates a short summary from SKILL.md",
+		Instruction: summarySystemPrompt,
+		Model:       chatModel,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create summary agent: %w", err)
+	}
+
 	workflow, err := adk.NewSequentialAgent(ctx, &adk.SequentialAgentConfig{
 		Name:        "skill_generation_workflow",
 		Description: "Two-stage skill generation: Overview -> API References",
@@ -47,12 +59,16 @@ func NewSkillWorkflow(chatModel model.ToolCallingChatModel) (*SkillWorkflow, err
 	}
 
 	return &SkillWorkflow{
-		workflow: workflow,
+		workflow:          workflow,
+		overviewAgent:     overviewAgent,
+		apiRetrievalAgent: apiRetrievalAgent,
+		summaryAgent:      summaryAgent,
 	}, nil
 }
 
 type WorkflowResult struct {
 	Overview   string
+	Summary    string
 	References []ReferenceDoc
 }
 
@@ -62,43 +78,63 @@ type ReferenceDoc struct {
 }
 
 func (w *SkillWorkflow) Run(ctx context.Context, codeContext string) (*WorkflowResult, error) {
-	runner := adk.NewRunner(ctx, adk.RunnerConfig{
-		Agent:           w.workflow,
-		EnableStreaming: true,
+	overviewRunner := adk.NewRunner(ctx, adk.RunnerConfig{
+		Agent:           w.overviewAgent,
+		EnableStreaming: false,
 	})
 
-	userMsg := fmt.Sprintf("Analyze the following source code and generate both SKILL.md and reference documentation:\n\n%s", codeContext)
-	userMsgObj := schema.UserMessage(userMsg)
-	events := runner.Run(ctx, []adk.Message{userMsgObj})
+	overviewMsg := fmt.Sprintf("Analyze the following source code and generate SKILL.md:\n\n%s", codeContext)
+	overviewEvents := overviewRunner.Run(ctx, []adk.Message{schema.UserMessage(overviewMsg)})
 
-	var overviewContent, apiContent string
-
-	for event, ok := events.Next(); ok; event, ok = events.Next() {
+	var overviewContent string
+	for event, ok := overviewEvents.Next(); ok; event, ok = overviewEvents.Next() {
 		if event.Output != nil && event.Output.MessageOutput != nil {
-			if stream := event.Output.MessageOutput.MessageStream; stream != nil {
-				for {
-					chunk, err := stream.Recv()
-					if err != nil {
-						if err == io.EOF {
-							break
-						}
-						return nil, err
-					}
+			msg := event.Output.MessageOutput.Message
+			if msg != nil {
+				overviewContent = msg.Content
+			}
+		}
+	}
 
-					content := chunk.Content
+	summaryRunner := adk.NewRunner(ctx, adk.RunnerConfig{
+		Agent:           w.summaryAgent,
+		EnableStreaming: false,
+	})
 
-					if len(overviewContent) < 500 && (len(apiContent) < 100 || content[len(content)-50:] == "api.md" || content[len(content)-50:] == "reference") {
-						overviewContent += content
-					} else {
-						apiContent += content
-					}
-				}
+	summaryMsg := fmt.Sprintf("Generate a short summary (1-2 sentences, max 200 characters) for this SKILL.md:\n\n%s", overviewContent)
+	summaryEvents := summaryRunner.Run(ctx, []adk.Message{schema.UserMessage(summaryMsg)})
+
+	var summaryContent string
+	for event, ok := summaryEvents.Next(); ok; event, ok = summaryEvents.Next() {
+		if event.Output != nil && event.Output.MessageOutput != nil {
+			msg := event.Output.MessageOutput.Message
+			if msg != nil {
+				summaryContent = msg.Content
+			}
+		}
+	}
+
+	apiRunner := adk.NewRunner(ctx, adk.RunnerConfig{
+		Agent:           w.apiRetrievalAgent,
+		EnableStreaming: false,
+	})
+
+	apiMsg := fmt.Sprintf("Based on the following SKILL.md and source code, generate API reference documentation:\n\nSKILL.md:\n%s\n\nSource Code:\n%s", overviewContent, codeContext)
+	apiEvents := apiRunner.Run(ctx, []adk.Message{schema.UserMessage(apiMsg)})
+
+	var apiContent string
+	for event, ok := apiEvents.Next(); ok; event, ok = apiEvents.Next() {
+		if event.Output != nil && event.Output.MessageOutput != nil {
+			msg := event.Output.MessageOutput.Message
+			if msg != nil {
+				apiContent = msg.Content
 			}
 		}
 	}
 
 	result := &WorkflowResult{
 		Overview: overviewContent,
+		Summary:  summaryContent,
 		References: []ReferenceDoc{
 			{Filename: "api.md", Content: apiContent},
 		},
@@ -126,3 +162,12 @@ The output should include:
 3. **Code Examples**: Usage patterns
 
 Output clean Markdown for the reference documentation.`
+
+const summarySystemPrompt = `You are a concise summarizer. Given the following SKILL.md content, generate a very short summary (1-2 sentences, maximum 200 characters) that describes what this skill does.
+
+The summary should:
+- Capture the core capability
+- Be plain text, not markdown
+- Be suitable for display in a card or list view
+
+Keep it brief and informative.`

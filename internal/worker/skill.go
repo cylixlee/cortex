@@ -166,7 +166,8 @@ func (w *SkillWorker) processTask(ctx context.Context, taskKey string) {
 		w.skillService.SaveReferences(ctx, skillID, []models.Reference{refModel})
 	}
 
-	skill.Description = result.Overview
+	skill.Description = result.Summary
+	skill.Overview = result.Overview
 	w.skillRepo.Update(skill)
 
 	log.Printf("Creating skill package for skillID=%s", skillID.String())
@@ -224,6 +225,11 @@ func buildCodeContext(docs []models.Document) string {
 
 func (w *SkillWorker) GetMinioClient() *storage.MinIOClient {
 	return w.minioClient
+}
+
+func (w *SkillWorker) SubscribeSkillStage(ctx context.Context, skillID string) *redis.PubSub {
+	channel := fmt.Sprintf("skill:stage:%s", skillID)
+	return w.redisClient.Subscribe(ctx, channel)
 }
 
 func (w *SkillWorker) createSkillPackage(ctx context.Context, skillID uuid.UUID, result *workflows.WorkflowResult) error {
