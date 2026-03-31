@@ -15,38 +15,35 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { login } from "@/api/auth"
-import { useAuthStore } from "@/stores"
+import { register } from "@/api/auth"
 
-const loginSchema = z.object({
+const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 })
 
-type LoginForm = z.infer<typeof loginSchema>
+type RegisterForm = z.infer<typeof registerSchema>
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const navigate = useNavigate()
-  const checkAuth = useAuthStore((s) => s.checkAuth)
   const [isLoading, setIsLoading] = useState(false)
 
   const {
-    register,
+    register: registerForm,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
   })
 
-  const onSubmit = async (data: LoginForm) => {
+  const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true)
     try {
-      await login(data.email, data.password)
-      checkAuth()
-      toast.success("Login successful")
-      navigate("/chat")
+      await register(data.email, data.password)
+      toast.success("Registration successful, please sign in")
+      navigate("/login")
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Login failed")
+      toast.error(error instanceof Error ? error.message : "Registration failed")
     } finally {
       setIsLoading(false)
     }
@@ -56,8 +53,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Cortex</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
+          <CardTitle>Create Account</CardTitle>
+          <CardDescription>Sign up for a new account</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -70,7 +67,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="you@example.com"
-                {...register("email")}
+                {...registerForm("email")}
               />
               {errors.email && (
                 <p className="text-sm text-destructive">
@@ -84,7 +81,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 placeholder="••••••••"
-                {...register("password")}
+                {...registerForm("password")}
               />
               {errors.password && (
                 <p className="text-sm text-destructive">
@@ -93,12 +90,12 @@ export default function LoginPage() {
               )}
             </div>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? "Creating account..." : "Sign up"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link to="/register" className="text-primary hover:underline">
-                Sign up
+              Already have an account?{" "}
+              <Link to="/login" className="text-primary hover:underline">
+                Sign in
               </Link>
             </p>
           </form>

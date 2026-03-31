@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom"
 import { AuthLayout, MainLayout } from "@/components/layout"
 import {
   LoginPage,
+  RegisterPage,
   ChatPage,
   SkillListPage,
   SkillUploadPage,
@@ -15,6 +16,10 @@ const router = createBrowserRouter([
       {
         path: "/login",
         element: <LoginPage />,
+      },
+      {
+        path: "/register",
+        element: <RegisterPage />,
       },
     ],
   },

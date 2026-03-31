@@ -21,6 +21,7 @@ export default function ChatPage() {
     isLoading,
     isSending,
     loadConversation,
+    loadConversations,
     sendMessage,
   } = useChatStore()
 
@@ -70,6 +71,7 @@ export default function ChatPage() {
       if (conversationId && !id) {
         navigate(`/chat/${conversationId}`)
       }
+      loadConversations()
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to send message"
