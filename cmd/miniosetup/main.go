@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/cylixlee/cortex/internal/config"
-	"github.com/cylixlee/cortex/pkg/storage"
+	"github.com/open-portfolios/cortex/internal/config"
+	"github.com/open-portfolios/cortex/pkg/storage"
 )
 
 func main() {

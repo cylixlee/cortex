@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"github.com/cylixlee/cortex/internal/models"
+	"github.com/open-portfolios/cortex/internal/models"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"

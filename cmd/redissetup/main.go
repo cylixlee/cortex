@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/cylixlee/cortex/internal/config"
+	"github.com/open-portfolios/cortex/internal/config"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/cylixlee/cortex/internal/service"
+	"github.com/open-portfolios/cortex/internal/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

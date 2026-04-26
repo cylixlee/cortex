@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cylixlee/cortex/internal/config"
+	"github.com/open-portfolios/cortex/internal/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )

@@ -1,4 +1,4 @@
-module github.com/cylixlee/cortex
+module github.com/open-portfolios/cortex
 
 go 1.25.0
 

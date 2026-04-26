@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/cylixlee/cortex/internal/models"
+	"github.com/open-portfolios/cortex/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cylixlee/cortex/internal/auth"
-	"github.com/cylixlee/cortex/internal/models"
+	"github.com/open-portfolios/cortex/internal/auth"
+	"github.com/open-portfolios/cortex/internal/models"
 	"github.com/gin-gonic/gin"
 )
 

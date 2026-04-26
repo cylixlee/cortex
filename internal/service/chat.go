@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cylixlee/cortex/internal/models"
-	"github.com/cylixlee/cortex/internal/repository"
-	"github.com/cylixlee/cortex/pkg/llm"
+	"github.com/open-portfolios/cortex/internal/models"
+	"github.com/open-portfolios/cortex/internal/repository"
+	"github.com/open-portfolios/cortex/pkg/llm"
 	"github.com/google/uuid"
 )
 

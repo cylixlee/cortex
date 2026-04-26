@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/cylixlee/cortex/internal/models"
-	"github.com/cylixlee/cortex/internal/service"
-	"github.com/cylixlee/cortex/internal/worker"
+	"github.com/open-portfolios/cortex/internal/models"
+	"github.com/open-portfolios/cortex/internal/service"
+	"github.com/open-portfolios/cortex/internal/worker"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"

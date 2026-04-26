@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/cylixlee/cortex/internal/models"
+	"github.com/open-portfolios/cortex/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
